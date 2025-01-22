@@ -14,6 +14,44 @@ def open_dashboard():
     COR_TEXTO = "#202124"  # Cinza escuro para texto
     COR_DESTAQUE = "#e8f0fe"  # Azul claro para hover
     
+    def sort_by_column(tree, col):
+        """Ordena o conteúdo da treeview quando o cabeçalho da coluna é clicado."""
+        # Obtém a direção atual da ordenação (^ para ascendente, v para descendente)
+        if not hasattr(tree, '_sort_dir'):
+            tree._sort_dir = {}
+        current_dir = tree._sort_dir.get(col, '')
+        
+        # Alterna a direção
+        new_dir = '' if current_dir == 'v' else 'v'
+        tree._sort_dir[col] = new_dir
+        
+        # Atualiza o texto do cabeçalho com a seta de direção
+        for column in tree['columns']:
+            if column == col:
+                tree.heading(column, text=f"{column} {'↓' if new_dir == 'v' else '↑'}")
+            else:
+                tree.heading(column, text=column)
+        
+        # Obtém todos os itens da árvore
+        items = [(tree.set(item, col), item) for item in tree.get_children('')]
+        
+        # Define a função de ordenação baseada no tipo de coluna
+        def convert_value(value):
+            if col == "ID":
+                return int(value)
+            elif col == "Valor":
+                return float(value.replace("R$", "").replace(".", "").replace(",", "."))
+            elif col == "Status":
+                return (value != "Faltando", value.lower())  # Mantém "Faltando" sempre no topo
+            return value.lower()  # Para outras colunas, converte para minúsculo
+        
+        # Ordena os itens
+        items.sort(key=lambda x: convert_value(x[0]), reverse=(new_dir == 'v'))
+        
+        # Reorganiza os itens nas posições ordenadas
+        for index, (_, item) in enumerate(items):
+            tree.move(item, '', index)
+
     # Estilo para botões
     def configurar_botao(botao, cor_bg=COR_PRIMARIA):
         botao.configure(
@@ -179,8 +217,8 @@ def open_dashboard():
             
             if row_formatado[6] == 'Faltando':
                 tabela.item(item, tags=('faltando',))
-    
-    
+
+ 
     def carregar_dizimistas():
         atualizar_status_pagamentos()
         for item in tabela.get_children():
@@ -399,7 +437,7 @@ def open_dashboard():
     tabela.pack(fill="both", expand=True, padx=10, pady=10)
 
     for col in ["ID", "Nome", "Valor", "Data Doação", "Aniversário", "Telefone", "Status"]:
-        tabela.heading(col, text=col)
+        tabela.heading(col, text=col, command=lambda c=col: sort_by_column(tabela, c))
 
     tabela.column("ID", width=30)
     tabela.column("Nome", width=150)
