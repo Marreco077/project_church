@@ -7,17 +7,77 @@ from datetime import datetime, timedelta
 def open_dashboard():
     locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
     
+    # Definição das cores
+    COR_FUNDO = "#f0f2f5"  # Cinza claro para o fundo
+    COR_PRIMARIA = "#1a73e8"  # Azul para botões principais
+    COR_SECUNDARIA = "#ffffff"  # Branco para cards
+    COR_TEXTO = "#202124"  # Cinza escuro para texto
+    COR_DESTAQUE = "#e8f0fe"  # Azul claro para hover
+    
+    # Estilo para botões
+    def configurar_botao(botao, cor_bg=COR_PRIMARIA):
+        botao.configure(
+            bg=cor_bg,
+            fg="white",
+            relief="flat",
+            activebackground=COR_DESTAQUE,
+            activeforeground=COR_TEXTO,
+            cursor="hand2",
+            font=("Arial", 10, "bold")
+        )
+    
+    # Estilo para labels
+    def configurar_label(label, size=10, bold=False):
+        weight = "bold" if bold else "normal"
+        label.configure(
+            font=("Arial", size, weight),
+            fg=COR_TEXTO,
+            bg=COR_FUNDO
+        )
+    
+    def mostrar_aniversariantes():
+        mes_atual = datetime.now().strftime('%m')
+        
+        # Criar nova janela
+        janela_aniversariantes = tk.Toplevel()
+        janela_aniversariantes.title(f"Aniversariantes de {datetime.now().strftime('%B')}")
+        janela_aniversariantes.geometry("400x300")
+        
+        # Criar Treeview
+        tree = ttk.Treeview(janela_aniversariantes, columns=("Nome", "Aniversário"), show="headings")
+        tree.heading("Nome", text="Nome")
+        tree.heading("Aniversário", text="Aniversário")
+        tree.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Buscar aniversariantes
+        conn = sqlite3.connect("dizimos.db")
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT nome, aniversario 
+            FROM dizimistas 
+            WHERE substr(aniversario, 4, 2) = ?
+            ORDER BY substr(aniversario, 1, 2)
+        """, (mes_atual,))
+        
+        aniversariantes = cursor.fetchall()
+        conn.close()
+        
+        for aniversariante in aniversariantes:
+            tree.insert("", "end", values=aniversariante)
+    
     def atualizar_status_pagamentos():
         conn = sqlite3.connect("dizimos.db")
         cursor = conn.cursor()
         data_atual = datetime.now()
         limite_atraso = data_atual - timedelta(days=30)
         
-        # Update status_atraso for all records
         cursor.execute("""
             UPDATE dizimistas 
             SET status_atraso = CASE 
-                WHEN strftime('%Y-%m-%d', data_doacao) < ? THEN 'Faltando'
+                WHEN date(substr(data_doacao, 7, 4) || '-' || 
+                         substr(data_doacao, 4, 2) || '-' || 
+                         substr(data_doacao, 1, 2)) < date(?)
+                THEN 'Faltando'
                 ELSE 'Em dia'
             END
         """, (limite_atraso.strftime('%Y-%m-%d'),))
@@ -29,22 +89,25 @@ def open_dashboard():
         conn = sqlite3.connect("dizimos.db")
         cursor = conn.cursor()
         
-        cursor.execute("""
-            SELECT SUM(valor) FROM dizimistas 
-            WHERE strftime('%m', data_doacao) = '01' 
-            AND strftime('%Y', data_doacao) = '2025'
-        """)
-        
-        total_mes = cursor.fetchone()[0] or 0
-        label_total_mes.config(text=f"Total Janeiro/2025:\n{locale.currency(total_mes, grouping=True)}")
+        mes_atual = datetime.now().strftime('%m')
+        ano_atual = datetime.now().strftime('%Y')
         
         cursor.execute("""
-            SELECT SUM(valor) FROM dizimistas 
-            WHERE strftime('%Y', data_doacao) = '2025'
-        """)
+            SELECT COALESCE(SUM(valor), 0) FROM dizimistas 
+            WHERE substr(data_doacao, 4, 2) = ? 
+            AND substr(data_doacao, 7, 4) = ?
+        """, (mes_atual, ano_atual))
         
-        total_ano = cursor.fetchone()[0] or 0
-        label_total_ano.config(text=f"Total 2025:\n{locale.currency(total_ano, grouping=True)}")
+        total_mes = cursor.fetchone()[0]
+        label_total_mes.config(text=f"Total {datetime.now().strftime('%B/%Y')}:\n{locale.currency(total_mes, grouping=True)}")
+        
+        cursor.execute("""
+            SELECT COALESCE(SUM(valor), 0) FROM dizimistas 
+            WHERE substr(data_doacao, 7, 4) = ?
+        """, (ano_atual,))
+        
+        total_ano = cursor.fetchone()[0]
+        label_total_ano.config(text=f"Total {ano_atual}:\n{locale.currency(total_ano, grouping=True)}")
         
         conn.close()
 
@@ -84,12 +147,6 @@ def open_dashboard():
             entry.delete(0, tk.END)
             entry.insert(0, texto_formatado)
 
-    def converter_data_para_banco(data):
-        if "/" in data:
-            dia, mes, ano = data.split("/")
-            return f"{dia}-{mes}-{ano}"
-        return data
-
     def converter_valor_para_banco(valor):
         return float(valor.replace("R$", "").replace(".", "").replace(",", "."))
 
@@ -118,8 +175,12 @@ def open_dashboard():
             valor_formatado = f"R${float(row[2]):,.2f}".replace(".", ",")
             row_formatado = list(row)
             row_formatado[2] = valor_formatado
-            tabela.insert("", "end", values=row_formatado)
-
+            item = tabela.insert("", "end", values=row_formatado)
+            
+            if row_formatado[6] == 'Faltando':
+                tabela.item(item, tags=('faltando',))
+    
+    
     def carregar_dizimistas():
         atualizar_status_pagamentos()
         for item in tabela.get_children():
@@ -131,7 +192,6 @@ def open_dashboard():
         rows = cursor.fetchall()
         conn.close()
         
-        # Configure tag before adding items
         tabela.tag_configure('faltando', foreground='red')
         
         for row in rows:
@@ -140,7 +200,6 @@ def open_dashboard():
             row_formatado[2] = valor_formatado
             item = tabela.insert("", "end", values=row_formatado)
             
-            # Apply tag based on status_atraso
             if row_formatado[6] == 'Faltando':
                 tabela.item(item, tags=('faltando',))
         
@@ -149,8 +208,8 @@ def open_dashboard():
     def cadastrar_dizimista():
         nome = entry_nome.get()
         valor = entry_valor.get()
-        data_doacao = converter_data_para_banco(entry_data_doacao.get())
-        aniversario = converter_data_para_banco(entry_aniversario.get())
+        data_doacao = entry_data_doacao.get()
+        aniversario = entry_aniversario.get()
         telefone = entry_telefone.get()
         
         if not nome or not valor or not data_doacao or not aniversario or not telefone:
@@ -176,6 +235,14 @@ def open_dashboard():
             
             conn.commit()
             conn.close()
+            
+            entry_nome.delete(0, tk.END)
+            entry_valor.delete(0, tk.END)
+            entry_valor.insert(0, "R$0,00")
+            entry_data_doacao.delete(0, tk.END)
+            entry_aniversario.delete(0, tk.END)
+            entry_telefone.delete(0, tk.END)
+            
             carregar_dizimistas()
             messagebox.showinfo("Sucesso", "Dizimista cadastrado com sucesso!")
         except Exception as e:
@@ -187,97 +254,152 @@ def open_dashboard():
             messagebox.showwarning("Seleção", "Por favor, selecione um dizimista para excluir.")
             return
         
-        item = tabela.item(selected_item)
-        dizimista_id = item['values'][0]
-        
-        try:
-            conn = sqlite3.connect("dizimos.db")
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM dizimistas WHERE id = ?", (dizimista_id,))
-            conn.commit()
-            conn.close()
-            carregar_dizimistas()
-            messagebox.showinfo("Sucesso", "Dizimista excluído com sucesso!")
-        except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao excluir: {e}")
+        if messagebox.askyesno("Confirmar", "Tem certeza que deseja excluir este dizimista?"):
+            item = tabela.item(selected_item)
+            dizimista_id = item['values'][0]
+            
+            try:
+                conn = sqlite3.connect("dizimos.db")
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM dizimistas WHERE id = ?", (dizimista_id,))
+                conn.commit()
+                conn.close()
+                carregar_dizimistas()
+                messagebox.showinfo("Sucesso", "Dizimista excluído com sucesso!")
+            except Exception as e:
+                messagebox.showerror("Erro", f"Erro ao excluir: {e}")
 
     dashboard = tk.Tk()
     dashboard.title("Gerenciador de Dízimos")
-    dashboard.geometry("1200x700")
+    dashboard.configure(bg=COR_FUNDO)
     
-    largura = 1200
-    altura = 700
+    # Configuração do tamanho e posição
+    largura = 1400
+    altura = 800
     screen_width = dashboard.winfo_screenwidth()
     screen_height = dashboard.winfo_screenheight()
     pos_x = (screen_width // 2) - (largura // 2)
     pos_y = (screen_height // 2) - (altura // 2)
     dashboard.geometry(f"{largura}x{altura}+{pos_x}+{pos_y}")
     
-    frame_left = tk.Frame(dashboard)
-    frame_left.pack(side="left", padx=10, fill="y")
+    # Frames principais com cores
+    frame_left = tk.Frame(dashboard, bg=COR_FUNDO)
+    frame_left.pack(side="left", padx=20, fill="y")
     
-    frame_right = tk.Frame(dashboard)
-    frame_right.pack(side="right", padx=10, fill="y")
+    frame_right = tk.Frame(dashboard, bg=COR_FUNDO)
+    frame_right.pack(side="right", padx=20, fill="y")
     
-    frame_center = tk.Frame(dashboard)
-    frame_center.pack(expand=True, fill="both")
+    frame_center = tk.Frame(dashboard, bg=COR_FUNDO)
+    frame_center.pack(expand=True, fill="both", padx=20)
 
-    label_total_mes = tk.Label(frame_left, font=("Arial", 12, "bold"), relief="solid", padx=10, pady=10)
+    # Card para totais com sombra e cantos arredondados
+    label_total_mes = tk.Label(
+        frame_left,
+        font=("Arial", 14, "bold"),
+        relief="solid",
+        padx=20,
+        pady=20,
+        bg=COR_SECUNDARIA,
+        fg=COR_TEXTO,
+        bd=0
+    )
     label_total_mes.pack(pady=20)
     
-    label_total_ano = tk.Label(frame_right, font=("Arial", 12, "bold"), relief="solid", padx=10, pady=10)
+    label_total_ano = tk.Label(
+        frame_right,
+        font=("Arial", 14, "bold"),
+        relief="solid",
+        padx=20,
+        pady=20,
+        bg=COR_SECUNDARIA,
+        fg=COR_TEXTO,
+        width=20,
+        bd=0
+    )
     label_total_ano.pack(pady=20)
     
-    frame_form = tk.Frame(frame_left)
+    # Botão de aniversariantes estilizado
+    btn_aniversariantes = tk.Button(
+        frame_right,
+        text="Aniversariantes do Mês",
+        command=mostrar_aniversariantes,
+        width=20,
+        pady=8
+    )
+    configurar_botao(btn_aniversariantes)
+    btn_aniversariantes.pack(pady=10)
+    
+    # Frame do formulário com fundo branco
+    frame_form = tk.Frame(frame_left, bg=COR_SECUNDARIA, padx=15, pady=15)
     frame_form.pack(pady=10)
 
-    tk.Label(frame_form, text="Nome:").grid(row=0, column=0, padx=5, pady=5)
-    entry_nome = tk.Entry(frame_form, width=25)
-    entry_nome.grid(row=0, column=1, padx=5, pady=5)
+    # Estilização dos campos do formulário
+    for i, texto in enumerate(["Nome:", "Valor:", "Data Doação:", "Aniversário:", "Telefone:"]):
+        label = tk.Label(frame_form, text=texto, bg=COR_SECUNDARIA)
+        configurar_label(label)
+        label.grid(row=i, column=0, padx=8, pady=8, sticky="e")
 
-    tk.Label(frame_form, text="Valor:").grid(row=1, column=0, padx=5, pady=5)
-    entry_valor = tk.Entry(frame_form, width=25)
-    entry_valor.grid(row=1, column=1, padx=5, pady=5)
+    # Entradas do formulário
+    entries = [
+        ("entry_nome", None),
+        ("entry_valor", lambda e: formatar_valor_digitacao(e, entry_valor)),
+        ("entry_data_doacao", lambda e: formatar_data_digitacao(e, entry_data_doacao)),
+        ("entry_aniversario", lambda e: formatar_data_digitacao(e, entry_aniversario)),
+        ("entry_telefone", None)
+    ]
+
+    for i, (nome, comando) in enumerate(entries):
+        entry = tk.Entry(frame_form, width=25, font=("Arial", 10))
+        entry.grid(row=i, column=1, padx=8, pady=8)
+        if comando:
+            entry.bind('<KeyRelease>', comando)
+        globals()[nome] = entry
+
     entry_valor.insert(0, "R$0,00")
-    entry_valor.bind('<KeyRelease>', lambda e: formatar_valor_digitacao(e, entry_valor))
 
-    tk.Label(frame_form, text="Data Doação:").grid(row=2, column=0, padx=5, pady=5)
-    entry_data_doacao = tk.Entry(frame_form, width=25)
-    entry_data_doacao.grid(row=2, column=1, padx=5, pady=5)
-    entry_data_doacao.bind('<KeyRelease>', lambda e: formatar_data_digitacao(e, entry_data_doacao))
+    # Botão de cadastro estilizado
+    btn_cadastrar = tk.Button(frame_form, text="Cadastrar", command=cadastrar_dizimista, width=20, pady=8)
+    configurar_botao(btn_cadastrar)
+    btn_cadastrar.grid(row=5, column=0, columnspan=2, pady=15)
 
-    tk.Label(frame_form, text="Aniversário:").grid(row=3, column=0, padx=5, pady=5)
-    entry_aniversario = tk.Entry(frame_form, width=25)
-    entry_aniversario.grid(row=3, column=1, padx=5, pady=5)
-    entry_aniversario.bind('<KeyRelease>', lambda e: formatar_data_digitacao(e, entry_aniversario))
-
-    tk.Label(frame_form, text="Telefone:").grid(row=4, column=0, padx=5, pady=5)
-    entry_telefone = tk.Entry(frame_form, width=25)
-    entry_telefone.grid(row=4, column=1, padx=5, pady=5)
-
-    tk.Button(frame_form, text="Cadastrar", command=cadastrar_dizimista).grid(row=5, column=0, columnspan=2, pady=10)
-
-    # Frame para filtro
-    frame_filtro = tk.Frame(frame_center)
-    frame_filtro.pack(pady=10)
+    # Frame de filtro estilizado
+    frame_filtro = tk.Frame(frame_center, bg=COR_SECUNDARIA, padx=15, pady=15)
+    frame_filtro.pack(pady=15, fill="x")
     
-    tk.Label(frame_filtro, text="Filtrar por nome:").pack(side="left", padx=5)
-    entry_filtro = tk.Entry(frame_filtro, width=25)
-    entry_filtro.pack(side="left", padx=5)
-    tk.Button(frame_filtro, text="Filtrar", command=filtrar_dizimistas).pack(side="left", padx=5)
-    tk.Button(frame_filtro, text="Limpar Filtro", command=carregar_dizimistas).pack(side="left", padx=5)
+    label_filtro = tk.Label(frame_filtro, text="Filtrar por nome:", bg=COR_SECUNDARIA)
+    configurar_label(label_filtro)
+    label_filtro.pack(side="left", padx=8)
+    
+    entry_filtro = tk.Entry(frame_filtro, width=25, font=("Arial", 10))
+    entry_filtro.pack(side="left", padx=8)
+    
+    btn_filtrar = tk.Button(frame_filtro, text="Filtrar", command=filtrar_dizimistas, width=10)
+    configurar_botao(btn_filtrar)
+    btn_filtrar.pack(side="left", padx=8)
+    
+    btn_limpar = tk.Button(frame_filtro, text="Limpar Filtro", command=carregar_dizimistas, width=12)
+    configurar_botao(btn_limpar, cor_bg="#6c757d")  # Cinza para botão secundário
+    btn_limpar.pack(side="left", padx=8)
+
+    # Estilo para a tabela
+    style = ttk.Style()
+    style.theme_use('default')
+    style.configure(
+        "Treeview",
+        background=COR_SECUNDARIA,
+        foreground=COR_TEXTO,
+        rowheight=25,
+        fieldbackground=COR_SECUNDARIA
+    )
+    style.configure("Treeview.Heading", font=('Arial', 10, 'bold'))
+    style.map('Treeview', background=[('selected', COR_PRIMARIA)])
 
     tabela = ttk.Treeview(frame_center, columns=("ID", "Nome", "Valor", "Data Doação", "Aniversário", "Telefone", "Status"), show="headings")
     tabela.tag_configure('faltando', foreground='red')
     tabela.pack(fill="both", expand=True, padx=10, pady=10)
 
-    tabela.heading("ID", text="ID")
-    tabela.heading("Nome", text="Nome")
-    tabela.heading("Valor", text="Valor")
-    tabela.heading("Data Doação", text="Data Doação")
-    tabela.heading("Aniversário", text="Aniversário")
-    tabela.heading("Telefone", text="Telefone")
-    tabela.heading("Status", text="Status")
+    for col in ["ID", "Nome", "Valor", "Data Doação", "Aniversário", "Telefone", "Status"]:
+        tabela.heading(col, text=col)
 
     tabela.column("ID", width=30)
     tabela.column("Nome", width=150)
@@ -287,7 +409,10 @@ def open_dashboard():
     tabela.column("Telefone", width=100)
     tabela.column("Status", width=80)
 
-    tk.Button(frame_center, text="Deletar Dizimista", command=deletar_dizimista, width=20).pack(pady=10)
+    # Botão de deletar estilizado
+    btn_deletar = tk.Button(frame_center, text="Deletar Dizimista", command=deletar_dizimista, width=20)
+    configurar_botao(btn_deletar, cor_bg="#dc3545")  # Vermelho para botão de deletar
+    btn_deletar.pack(pady=15)
 
     carregar_dizimistas()
     atualizar_sumarios()
