@@ -22,26 +22,28 @@ def login():
     else:
         messagebox.showerror("Erro", "Usuário ou senha inválidos!")
 
+def on_enter_entry(event):
+    event.widget.config(bg="#ffe0f0", highlightbackground="#FF80FF")
+
+def on_leave_entry(event):
+    event.widget.config(bg="white", highlightbackground="#CCCCCC")
+
 # Tela de login
 root = tk.Tk()
 root.title("Sistema de Gestão Paroquial")
 
-# Definir o tamanho da janela de login
-largura = 800
-altura = 600
-
-# Calcular a posição central
+# Dimensões da janela principal
+largura = 1200
+altura = 700
 screen_width = root.winfo_screenwidth()
 screen_height = root.winfo_screenheight()
 pos_x = (screen_width // 2) - (largura // 2)
 pos_y = (screen_height // 2) - (altura // 2)
-
-# Configurar a janela para abrir no centro
 root.geometry(f"{largura}x{altura}+{pos_x}+{pos_y}")
 root.resizable(False, False)
 
 # Carregar e redimensionar a imagem de fundo
-image = Image.open("church.jpg")  # Certifique-se de que o arquivo está no mesmo diretório
+image = Image.open("church.jpeg")
 image = image.resize((largura, altura))
 bg_image = ImageTk.PhotoImage(image)
 
@@ -49,44 +51,72 @@ bg_image = ImageTk.PhotoImage(image)
 background_label = tk.Label(root, image=bg_image)
 background_label.place(x=0, y=0, relwidth=1, relheight=1)
 
-# Frame semi-transparente para o formulário de login
-login_frame = tk.Frame(root, bg='white')
-login_frame.place(relx=0.7, rely=0.5, anchor="center")
+# Criar um frame com efeito de sombra no canto superior direito
+login_frame = tk.Frame(root, bg='white', bd=10, relief="ridge", highlightbackground="#2196F3", highlightthickness=2)
+login_frame.place(x=750, y=50)  # Alterado para posicionar no canto superior direito
 
-# Título do sistema
+# Adicionar um título centralizado e com padding
 titulo = tk.Label(login_frame, 
-                 text="Bem-vindo\nSistema Dizimista Bom Pastor",
-                 font=("Arial", 16, "bold"),
+                 text="Sistema Dizimista Bom Pastor",
+                 font=("Helvetica", 18, "bold"),
                  bg='white',
+                 fg="#2196F3",  # Mantido azul para o título
                  justify="center")
-titulo.pack(pady=20)
+titulo.grid(row=0, column=0, pady=20, padx=20)
 
-# Widgets de login com estilo aprimorado
-style = {'font': ("Arial", 12),
-         'bg': 'white',
-         'fg': '#333333'}
+# Estilo aprimorado para os widgets
+style_label = {'font': ("Helvetica", 12),
+               'bg': 'white',
+               'fg': '#333333'}
 
-tk.Label(login_frame, text="Usuário:", **style).pack(pady=5)
-entry_usuario = tk.Entry(login_frame, width=30, font=("Arial", 12))
-entry_usuario.pack(pady=5)
+# Campo de usuário
+tk.Label(login_frame, text="Usuário:", **style_label).grid(row=1, column=0, pady=5)
+entry_usuario = tk.Entry(login_frame, 
+                         font=("Helvetica", 12), 
+                         bg="white", 
+                         fg="#333333", 
+                         relief="flat", 
+                         width=30,
+                         highlightthickness=2,
+                         highlightbackground="#CCCCCC",
+                         highlightcolor="#2196F3")  # Mantido azul para destaque
+entry_usuario.grid(row=2, column=0, pady=5)
+entry_usuario.bind("<FocusIn>", on_enter_entry)
+entry_usuario.bind("<FocusOut>", on_leave_entry)
 
-tk.Label(login_frame, text="Senha:", **style).pack(pady=5)
-entry_senha = tk.Entry(login_frame, show="*", width=30, font=("Arial", 12))
-entry_senha.pack(pady=5)
+# Campo de senha
+tk.Label(login_frame, text="Senha:", **style_label).grid(row=3, column=0, pady=5)
+entry_senha = tk.Entry(login_frame, 
+                       show="*", 
+                       font=("Helvetica", 12), 
+                       bg="white", 
+                       fg="#333333", 
+                       relief="flat", 
+                       width=30,
+                       highlightthickness=2,
+                       highlightbackground="#CCCCCC",
+                       highlightcolor="#2196F3")  # Mantido azul para destaque
+entry_senha.grid(row=4, column=0, pady=5)
+entry_senha.bind("<FocusIn>", on_enter_entry)
+entry_senha.bind("<FocusOut>", on_leave_entry)
 
-# Botão de login estilizado
+# Botão de login estilizado (sempre rosa)
 login_button = tk.Button(login_frame,
                         text="Entrar",
                         command=login,
-                        width=15,
-                        font=("Arial", 12, "bold"),
-                        bg="#4CAF50",
+                        width=20,
+                        font=("Helvetica", 14, "bold"),
+                        bg="#FF66B2",  # Rosa mais intenso
                         fg="white",
-                        cursor="hand2")
-login_button.pack(pady=20)
+                        activebackground="#FF3385",  # Rosa mais escuro ao passar o mouse
+                        activeforeground="white",
+                        cursor="hand2",
+                        relief="flat",
+                        bd=5)  # Adicionando borda para efeito de sombra
+login_button.grid(row=5, column=0, pady=20)
 
-# Adicionar padding ao frame de login
+# Ajustar padding nos widgets
 for child in login_frame.winfo_children():
-    child.pack_configure(padx=30)
+    child.grid_configure(padx=20)
 
 root.mainloop()
