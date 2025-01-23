@@ -32,6 +32,12 @@ def create_database():
         VALUES ('teste', '123')
     """)
     
+    # Adiciona o novo usuário Marcelo
+    cursor.execute("""
+        INSERT OR IGNORE INTO usuarios (usuario, senha)
+        VALUES ('marcelo', '12345')
+    """)
+    
     conn.commit()
     conn.close()
 

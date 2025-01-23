@@ -258,11 +258,13 @@ def open_dashboard():
     def confirmar_atualizacao(dizimista_id):
         nome = entry_nome.get()
         valor = entry_valor.get()
-        data_doacao = entry_data_doacao.get()
         aniversario = entry_aniversario.get()
         telefone = entry_telefone.get()
         
-        if not nome or not valor or not data_doacao or not aniversario or not telefone:
+        # Define data de doação sempre como a data atual
+        data_doacao = datetime.now().strftime('%d/%m/%Y')
+        
+        if not nome or not valor or not aniversario or not telefone:
             messagebox.showerror("Erro", "Todos os campos devem ser preenchidos.")
             return
         
@@ -284,7 +286,6 @@ def open_dashboard():
             entry_nome.delete(0, tk.END)
             entry_valor.delete(0, tk.END)
             entry_valor.insert(0, "R$0,00")
-            entry_data_doacao.delete(0, tk.END)
             entry_aniversario.delete(0, tk.END)
             entry_telefone.delete(0, tk.END)
             
@@ -324,11 +325,13 @@ def open_dashboard():
     def cadastrar_dizimista():
         nome = entry_nome.get()
         valor = entry_valor.get()
-        data_doacao = entry_data_doacao.get()
         aniversario = entry_aniversario.get()
         telefone = entry_telefone.get()
         
-        if not nome or not valor or not data_doacao or not aniversario or not telefone:
+        # Remove a entrada manual de data_doacao, usando sempre a data atual
+        data_doacao = datetime.now().strftime('%d/%m/%Y')
+        
+        if not nome or not valor or not aniversario or not telefone:
             messagebox.showerror("Erro", "Todos os campos devem ser preenchidos.")
             return
         
@@ -459,17 +462,21 @@ def open_dashboard():
     entries = [
         ("entry_nome", None),
         ("entry_valor", lambda e: formatar_valor_digitacao(e, entry_valor)),
-        ("entry_data_doacao", lambda e: formatar_data_digitacao(e, entry_data_doacao)),
+        ("entry_data_doacao", None),  # Remova a função de formatação
         ("entry_aniversario", lambda e: formatar_data_digitacao(e, entry_aniversario)),
         ("entry_telefone", None)
     ]
 
     for i, (nome, comando) in enumerate(entries):
-        entry = tk.Entry(frame_form, width=25, font=("Arial", 10))
+        entry = tk.Entry(frame_form, width=25, font=("Arial", 10), state='normal')
         entry.grid(row=i, column=1, padx=8, pady=8)
         if comando:
             entry.bind('<KeyRelease>', comando)
         globals()[nome] = entry
+
+    entry_data_doacao.delete(0, tk.END)
+    entry_data_doacao.insert(0, datetime.now().strftime('%d/%m/%Y'))
+    entry_data_doacao.configure(state='readonly')
 
     entry_valor.insert(0, "R$0,00")
 
