@@ -218,7 +218,85 @@ def open_dashboard():
             if row_formatado[6] == 'Faltando':
                 tabela.item(item, tags=('faltando',))
 
- 
+
+    def atualizar_dizimista():
+        selected_item = tabela.selection()
+        if not selected_item:
+            messagebox.showwarning("Seleção", "Por favor, selecione um dizimista para atualizar.")
+            return
+        
+        item = tabela.item(selected_item)
+        dizimista_id = item['values'][0]
+        
+        # Preenche os campos do formulário com os dados atuais
+        entry_nome.delete(0, tk.END)
+        entry_nome.insert(0, item['values'][1])
+        
+        entry_valor.delete(0, tk.END)
+        entry_valor.insert(0, item['values'][2])
+        
+        entry_data_doacao.delete(0, tk.END)
+        entry_data_doacao.insert(0, item['values'][3])
+        
+        entry_aniversario.delete(0, tk.END)
+        entry_aniversario.insert(0, item['values'][4])
+        
+        entry_telefone.delete(0, tk.END)
+        entry_telefone.insert(0, item['values'][5])
+        
+        # Cria um botão de confirmação de atualização
+        btn_confirmar_atualizacao = tk.Button(
+            frame_form, 
+            text="Confirmar Atualização", 
+            command=lambda: confirmar_atualizacao(dizimista_id), 
+            width=20, 
+            pady=8
+        )
+        configurar_botao(btn_confirmar_atualizacao)
+        btn_confirmar_atualizacao.grid(row=5, column=0, columnspan=2, pady=15)
+        
+    def confirmar_atualizacao(dizimista_id):
+        nome = entry_nome.get()
+        valor = entry_valor.get()
+        data_doacao = entry_data_doacao.get()
+        aniversario = entry_aniversario.get()
+        telefone = entry_telefone.get()
+        
+        if not nome or not valor or not data_doacao or not aniversario or not telefone:
+            messagebox.showerror("Erro", "Todos os campos devem ser preenchidos.")
+            return
+        
+        try:
+            valor_convertido = converter_valor_para_banco(valor)
+            conn = sqlite3.connect("dizimos.db")
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                UPDATE dizimistas 
+                SET nome=?, valor=?, data_doacao=?, aniversario=?, telefone=?
+                WHERE id=?
+            """, (nome, valor_convertido, data_doacao, aniversario, telefone, dizimista_id))
+            
+            conn.commit()
+            conn.close()
+            
+            # Limpa os campos e recarrega a tabela
+            entry_nome.delete(0, tk.END)
+            entry_valor.delete(0, tk.END)
+            entry_valor.insert(0, "R$0,00")
+            entry_data_doacao.delete(0, tk.END)
+            entry_aniversario.delete(0, tk.END)
+            entry_telefone.delete(0, tk.END)
+            
+            # Remove o botão de confirmação
+            btn_confirmar_atualizacao = frame_form.grid_slaves(row=5, column=0)[0]
+            btn_confirmar_atualizacao.grid_forget()
+            
+            carregar_dizimistas()
+            messagebox.showinfo("Sucesso", "Dizimista atualizado com sucesso!")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao atualizar: {e}")
+
     def carregar_dizimistas():
         atualizar_status_pagamentos()
         for item in tabela.get_children():
@@ -447,6 +525,11 @@ def open_dashboard():
     tabela.column("Telefone", width=100)
     tabela.column("Status", width=80)
 
+
+    # Botão de atualizar estilizado
+    btn_atualizar = tk.Button(frame_center, text="Atualizar Dizimista", command=atualizar_dizimista, width=20)
+    configurar_botao(btn_atualizar, cor_bg="#28a745")  # Verde para botão de atualizar
+    btn_atualizar.pack(pady=15)
     # Botão de deletar estilizado
     btn_deletar = tk.Button(frame_center, text="Deletar Dizimista", command=deletar_dizimista, width=20)
     configurar_botao(btn_deletar, cor_bg="#dc3545")  # Vermelho para botão de deletar
