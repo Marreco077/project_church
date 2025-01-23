@@ -1,8 +1,10 @@
 import tkinter as tk 
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, Toplevel
 import sqlite3
 import locale
 from datetime import datetime, timedelta
+import random
+
 
 def open_dashboard():
     locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
@@ -405,6 +407,45 @@ def open_dashboard():
             except Exception as e:
                 messagebox.showerror("Erro", f"Erro ao excluir: {e}")
 
+    def sortear_dizimista():
+        items = tabela.get_children()
+        
+        item_sorteado = random.choice(items)
+        dados_sorteado = tabela.item(item_sorteado)['values']
+        
+        mensagem = f"""O vencedor do sorteio foi:
+        
+        Nome: {dados_sorteado[1]}
+        Telefone: {dados_sorteado[5]}
+        Endereço: {dados_sorteado[6]}"""
+        
+        popup = Toplevel()
+        popup.title("Sorteio")
+        popup.geometry("400x250")
+        popup.resizable(False, False)
+        popup.grab_set()
+        
+        popup.update_idletasks()
+        width = popup.winfo_width()
+        height = popup.winfo_height()
+        x = (popup.winfo_screenwidth() // 2) - (width // 2)
+        y = (popup.winfo_screenheight() // 2) - (height // 2)
+        popup.geometry(f"{width}x{height}+{x}+{y}")
+        
+        label = tk.Label(
+            popup, 
+            text=mensagem, 
+            font=("Arial", 16, "bold"), 
+            wraplength=350, 
+            justify="center"
+        )
+        label.pack(pady=20)
+        
+        button = tk.Button(popup, text="OK", font=("Arial", 12), command=popup.destroy)
+        button.pack(pady=10)
+
+
+        
     dashboard = tk.Tk()
     dashboard.title("Gerenciador de Dízimos")
     dashboard.configure(bg=COR_FUNDO)
@@ -559,6 +600,10 @@ def open_dashboard():
     btn_deletar = tk.Button(frame_center, text="Deletar Dizimista", command=deletar_dizimista, width=20)
     configurar_botao(btn_deletar, cor_bg="#dc3545")  # Vermelho para botão de deletar
     btn_deletar.pack(pady=15)
+
+    btn_sortear = tk.Button(frame_center, text="Sortear Dizimista", command=sortear_dizimista, width=20)
+    configurar_botao(btn_sortear, cor_bg="#6f42c1")  # Roxo para botão de sorteio
+    btn_sortear.pack(pady=15)
 
     carregar_dizimistas()
     atualizar_sumarios()
