@@ -199,12 +199,12 @@ def open_dashboard():
         
         if nome_filtro:
             cursor.execute("""
-                SELECT id, nome, valor, data_doacao, aniversario, telefone, status_atraso 
+                SELECT id, nome, valor, data_doacao, aniversario, telefone, endereco, status_atraso 
                 FROM dizimistas 
                 WHERE LOWER(nome) LIKE ?
             """, (f"%{nome_filtro}%",))
         else:
-            cursor.execute("SELECT id, nome, valor, data_doacao, aniversario, telefone, status_atraso FROM dizimistas")
+            cursor.execute("SELECT id, nome, valor, data_doacao, aniversario, telefone, endereco, status_atraso FROM dizimistas")
             
         rows = cursor.fetchall()
         conn.close()
@@ -215,7 +215,7 @@ def open_dashboard():
             row_formatado[2] = valor_formatado
             item = tabela.insert("", "end", values=row_formatado)
             
-            if row_formatado[6] == 'Faltando':
+            if row_formatado[7] == 'Faltando':
                 tabela.item(item, tags=('faltando',))
 
 
@@ -244,7 +244,9 @@ def open_dashboard():
         entry_telefone.delete(0, tk.END)
         entry_telefone.insert(0, item['values'][5])
         
-        # Cria um botão de confirmação de atualização
+        entry_endereco.delete(0, tk.END)
+        entry_endereco.insert(0, item['values'][6])
+        
         btn_confirmar_atualizacao = tk.Button(
             frame_form, 
             text="Confirmar Atualização", 
@@ -253,18 +255,18 @@ def open_dashboard():
             pady=8
         )
         configurar_botao(btn_confirmar_atualizacao)
-        btn_confirmar_atualizacao.grid(row=5, column=0, columnspan=2, pady=15)
+        btn_confirmar_atualizacao.grid(row=6, column=0, columnspan=2, pady=15)
         
     def confirmar_atualizacao(dizimista_id):
         nome = entry_nome.get()
         valor = entry_valor.get()
         aniversario = entry_aniversario.get()
         telefone = entry_telefone.get()
+        endereco = entry_endereco.get()
         
-        # Define data de doação sempre como a data atual
         data_doacao = datetime.now().strftime('%d/%m/%Y')
         
-        if not nome or not valor or not aniversario or not telefone:
+        if not nome or not valor or not aniversario or not telefone or not endereco:
             messagebox.showerror("Erro", "Todos os campos devem ser preenchidos.")
             return
         
@@ -275,9 +277,9 @@ def open_dashboard():
             
             cursor.execute("""
                 UPDATE dizimistas 
-                SET nome=?, valor=?, data_doacao=?, aniversario=?, telefone=?
+                SET nome=?, valor=?, data_doacao=?, aniversario=?, telefone=?, endereco=?
                 WHERE id=?
-            """, (nome, valor_convertido, data_doacao, aniversario, telefone, dizimista_id))
+            """, (nome, valor_convertido, data_doacao, aniversario, telefone, endereco, dizimista_id))
             
             conn.commit()
             conn.close()
@@ -288,9 +290,10 @@ def open_dashboard():
             entry_valor.insert(0, "R$0,00")
             entry_aniversario.delete(0, tk.END)
             entry_telefone.delete(0, tk.END)
+            entry_endereco.delete(0, tk.END)
             
             # Remove o botão de confirmação
-            btn_confirmar_atualizacao = frame_form.grid_slaves(row=5, column=0)[0]
+            btn_confirmar_atualizacao = frame_form.grid_slaves(row=6, column=0)[0]
             btn_confirmar_atualizacao.grid_forget()
             
             carregar_dizimistas()
@@ -298,14 +301,26 @@ def open_dashboard():
         except Exception as e:
             messagebox.showerror("Erro", f"Erro ao atualizar: {e}")
 
+
     def carregar_dizimistas():
         atualizar_status_pagamentos()
+        
+        # Add this function to ensure the column exists
+        def adicionar_coluna_endereco():
+            conn = sqlite3.connect("dizimos.db")
+            cursor = conn.cursor()
+            
+            conn.close()
+        
+        # Call the function to add the column if it doesn't exist
+        adicionar_coluna_endereco()
+
         for item in tabela.get_children():
             tabela.delete(item)
         
         conn = sqlite3.connect("dizimos.db")
         cursor = conn.cursor()
-        cursor.execute("SELECT id, nome, valor, data_doacao, aniversario, telefone, status_atraso FROM dizimistas")
+        cursor.execute("SELECT id, nome, valor, data_doacao, aniversario, telefone, endereco, status_atraso FROM dizimistas")
         rows = cursor.fetchall()
         conn.close()
         
@@ -317,21 +332,22 @@ def open_dashboard():
             row_formatado[2] = valor_formatado
             item = tabela.insert("", "end", values=row_formatado)
             
-            if row_formatado[6] == 'Faltando':
+            if row_formatado[7] == 'Faltando':
                 tabela.item(item, tags=('faltando',))
         
         atualizar_sumarios()
+
 
     def cadastrar_dizimista():
         nome = entry_nome.get()
         valor = entry_valor.get()
         aniversario = entry_aniversario.get()
         telefone = entry_telefone.get()
+        endereco = entry_endereco.get()
         
-        # Remove a entrada manual de data_doacao, usando sempre a data atual
         data_doacao = datetime.now().strftime('%d/%m/%Y')
         
-        if not nome or not valor or not aniversario or not telefone:
+        if not nome or not valor or not aniversario or not telefone or not endereco:
             messagebox.showerror("Erro", "Todos os campos devem ser preenchidos.")
             return
         
@@ -348,9 +364,9 @@ def open_dashboard():
                 proximo_id = cursor.fetchone()[0]
             
             cursor.execute("""
-                INSERT INTO dizimistas (id, nome, valor, data_doacao, aniversario, telefone)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (proximo_id, nome, valor_convertido, data_doacao, aniversario, telefone))
+                INSERT INTO dizimistas (id, nome, valor, data_doacao, aniversario, telefone, endereco)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (proximo_id, nome, valor_convertido, data_doacao, aniversario, telefone, endereco))
             
             conn.commit()
             conn.close()
@@ -361,6 +377,7 @@ def open_dashboard():
             entry_data_doacao.delete(0, tk.END)
             entry_aniversario.delete(0, tk.END)
             entry_telefone.delete(0, tk.END)
+            entry_endereco.delete(0, tk.END)
             
             carregar_dizimistas()
             messagebox.showinfo("Sucesso", "Dizimista cadastrado com sucesso!")
@@ -393,7 +410,7 @@ def open_dashboard():
     dashboard.configure(bg=COR_FUNDO)
     
     # Configuração do tamanho e posição
-    largura = 1400
+    largura = 1600
     altura = 800
     screen_width = dashboard.winfo_screenwidth()
     screen_height = dashboard.winfo_screenheight()
@@ -453,7 +470,7 @@ def open_dashboard():
     frame_form.pack(pady=10)
 
     # Estilização dos campos do formulário
-    for i, texto in enumerate(["Nome:", "Valor:", "Data Doação:", "Aniversário:", "Telefone:"]):
+    for i, texto in enumerate(["Nome:", "Valor:", "Data Doação:", "Aniversário:", "Telefone:", "Endereço:"]):
         label = tk.Label(frame_form, text=texto, bg=COR_SECUNDARIA)
         configurar_label(label)
         label.grid(row=i, column=0, padx=8, pady=8, sticky="e")
@@ -462,9 +479,10 @@ def open_dashboard():
     entries = [
         ("entry_nome", None),
         ("entry_valor", lambda e: formatar_valor_digitacao(e, entry_valor)),
-        ("entry_data_doacao", None),  # Remova a função de formatação
+        ("entry_data_doacao", None),
         ("entry_aniversario", lambda e: formatar_data_digitacao(e, entry_aniversario)),
-        ("entry_telefone", None)
+        ("entry_telefone", None),
+        ("entry_endereco", None)
     ]
 
     for i, (nome, comando) in enumerate(entries):
@@ -483,7 +501,7 @@ def open_dashboard():
     # Botão de cadastro estilizado
     btn_cadastrar = tk.Button(frame_form, text="Cadastrar", command=cadastrar_dizimista, width=20, pady=8)
     configurar_botao(btn_cadastrar)
-    btn_cadastrar.grid(row=5, column=0, columnspan=2, pady=15)
+    btn_cadastrar.grid(row=6, column=0, columnspan=2, pady=15)
 
     # Frame de filtro estilizado
     frame_filtro = tk.Frame(frame_center, bg=COR_SECUNDARIA, padx=15, pady=15)
@@ -517,21 +535,21 @@ def open_dashboard():
     style.configure("Treeview.Heading", font=('Arial', 10, 'bold'))
     style.map('Treeview', background=[('selected', COR_PRIMARIA)])
 
-    tabela = ttk.Treeview(frame_center, columns=("ID", "Nome", "Valor", "Data Doação", "Aniversário", "Telefone", "Status"), show="headings")
+    tabela = ttk.Treeview(frame_center, columns=("ID", "Nome", "Valor", "Data Doação", "Aniversário", "Telefone", "Endereço", "Status"), show="headings")
     tabela.tag_configure('faltando', foreground='red')
     tabela.pack(fill="both", expand=True, padx=10, pady=10)
 
-    for col in ["ID", "Nome", "Valor", "Data Doação", "Aniversário", "Telefone", "Status"]:
+    for col in ["ID", "Nome", "Valor", "Data Doação", "Aniversário", "Telefone", "Endereço", "Status"]:
         tabela.heading(col, text=col, command=lambda c=col: sort_by_column(tabela, c))
 
-    tabela.column("ID", width=30)
-    tabela.column("Nome", width=150)
-    tabela.column("Valor", width=70)
+    tabela.column("ID", width=25)
+    tabela.column("Nome", width=160)
+    tabela.column("Valor", width=80)
     tabela.column("Data Doação", width=100)
     tabela.column("Aniversário", width=100)
     tabela.column("Telefone", width=100)
+    tabela.column("Endereço", width=200)
     tabela.column("Status", width=80)
-
 
     # Botão de atualizar estilizado
     btn_atualizar = tk.Button(frame_center, text="Atualizar Dizimista", command=atualizar_dizimista, width=20)

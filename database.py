@@ -13,7 +13,7 @@ def create_database():
         )
     """)
     
-    # Tabela de dizimistas
+    # Tabela de dizimistas com novo campo de endereço
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS dizimistas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,6 +22,7 @@ def create_database():
             data_doacao DATE NOT NULL,
             aniversario DATE NOT NULL,
             telefone TEXT NOT NULL,
+            endereco TEXT,
             status_atraso TEXT DEFAULT 'Em dia'
         )
     """)
