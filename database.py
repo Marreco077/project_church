@@ -6,13 +6,18 @@ def create_database():
     
     # Tabela de usuários
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS usuarios (
+        CREATE TABLE IF NOT EXISTS dizimistas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario TEXT NOT NULL UNIQUE,
-            senha TEXT NOT NULL
+            nome TEXT NOT NULL,
+            valor REAL NOT NULL,
+            data_doacao DATE NOT NULL,
+            aniversario DATE NOT NULL,
+            telefone TEXT NOT NULL,
+            endereco TEXT,
+            status_atraso TEXT DEFAULT 'Em dia',
+            agente TEXT DEFAULT "Nenhum"
         )
     """)
-    
     # Tabela de dizimistas com novo campo de endereço
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS dizimistas (
@@ -38,7 +43,6 @@ def create_database():
         INSERT OR IGNORE INTO usuarios (usuario, senha)
         VALUES ('marcelo', '12345')
     """)
-    
     conn.commit()
     conn.close()
 

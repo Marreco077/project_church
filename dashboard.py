@@ -173,22 +173,34 @@ def open_dashboard():
             entry.icursor(min(cursor_pos, len(texto)))
 
     def formatar_valor_digitacao(event, entry):
-        texto = entry.get().replace("R$", "").replace(",", "").replace(".", "").strip()
+        texto = entry.get().replace("R$", "").replace(".", "").replace(",", "").strip()
         
         if not texto:
             entry.delete(0, tk.END)
             entry.insert(0, "R$0,00")
             return
-            
-        if texto.isdigit():
-            valor = float(texto) / 100
-            texto_formatado = f"R${valor:,.2f}".replace(".", ",")
-            
+
+        try:
+            valor = int(texto)
+            valor_formatado = f"R${valor / 100:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
             entry.delete(0, tk.END)
-            entry.insert(0, texto_formatado)
+            entry.insert(0, valor_formatado)
+        except ValueError:
+            entry.delete(0, tk.END)
+            entry.insert(0, "R$0,00")
+
 
     def converter_valor_para_banco(valor):
-        return float(valor.replace("R$", "").replace(".", "").replace(",", "."))
+        try:
+            valor = valor.replace("R$", "").strip()  # Remove o prefixo de moeda
+            valor = valor.replace(".", "")  # Remove os separadores de milhar
+            valor = valor.replace(",", ".")  # Substitui a vírgula pelo ponto decimal
+            return float(valor)  # Converte para float
+        except ValueError:
+            raise ValueError(f"Formato inválido: {valor}")
+
+
+
 
     def filtrar_dizimistas():
         nome_filtro = entry_filtro.get().lower()
@@ -322,7 +334,7 @@ def open_dashboard():
         
         conn = sqlite3.connect("dizimos.db")
         cursor = conn.cursor()
-        cursor.execute("SELECT id, nome, valor, data_doacao, aniversario, telefone, endereco, status_atraso FROM dizimistas")
+        cursor.execute("SELECT id, nome, valor, data_doacao, aniversario, telefone, endereco, status_atraso, agente FROM dizimistas")
         rows = cursor.fetchall()
         conn.close()
         
@@ -346,6 +358,7 @@ def open_dashboard():
         aniversario = entry_aniversario.get()
         telefone = entry_telefone.get()
         endereco = entry_endereco.get()
+        agente = entry_agente.get()
         
         data_doacao = datetime.now().strftime('%d/%m/%Y')
         
@@ -366,9 +379,9 @@ def open_dashboard():
                 proximo_id = cursor.fetchone()[0]
             
             cursor.execute("""
-                INSERT INTO dizimistas (id, nome, valor, data_doacao, aniversario, telefone, endereco)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (proximo_id, nome, valor_convertido, data_doacao, aniversario, telefone, endereco))
+                INSERT INTO dizimistas (id, nome, valor, data_doacao, aniversario, telefone, endereco, agente)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (proximo_id, nome, valor_convertido, data_doacao, aniversario, telefone, endereco, agente))
             
             conn.commit()
             conn.close()
@@ -444,6 +457,57 @@ def open_dashboard():
         button = tk.Button(popup, text="OK", font=("Arial", 12), command=popup.destroy)
         button.pack(pady=10)
 
+    def mostrar_ficha_dizimista():
+        selected_item = tabela.selection()
+        if not selected_item:
+            messagebox.showwarning("Seleção", "Por favor, selecione um dizimista para ver a ficha.")
+            return
+        
+        item = tabela.item(selected_item)
+        dizimista_dados = item['values']
+        
+        # Create a new window for the donor card
+        ficha_window = tk.Toplevel()
+        ficha_window.title(f"Ficha do Dizimista - {dizimista_dados[1]}")
+        ficha_window.geometry("500x600")
+        ficha_window.configure(bg=COR_FUNDO)
+        
+        # Create frames for better organization
+        frame_info = tk.Frame(ficha_window, bg=COR_SECUNDARIA, padx=20, pady=20)
+        frame_info.pack(expand=True, fill="both", padx=20, pady=20)
+        
+        # Detailed information labels
+        informacoes = [
+            ("ID:", dizimista_dados[0]),
+            ("Nome:", dizimista_dados[1]),
+            ("Valor Último Dízimo:", dizimista_dados[2]),
+            ("Data da Última Doação:", dizimista_dados[3]),
+            ("Aniversário:", dizimista_dados[4]),
+            ("Telefone:", dizimista_dados[5]),
+            ("Endereço:", dizimista_dados[6]),
+            ("Status de Pagamento:", dizimista_dados[7]),
+            ("Agente:", dizimista_dados[8] if len(dizimista_dados) > 8 and dizimista_dados[8] else "Não informado")
+        ]
+        
+        # Fetch additional historical data
+        conn = sqlite3.connect("dizimos.db")
+        
+        
+        conn.close()
+
+        
+        # Create and style information labels
+        for i, (label_text, valor) in enumerate(informacoes):
+            label_nome = tk.Label(frame_info, text=label_text, font=("Arial", 12, "bold"), bg=COR_SECUNDARIA, fg=COR_TEXTO)
+            label_nome.grid(row=i, column=0, sticky="w", pady=5)
+            
+            label_valor = tk.Label(frame_info, text=str(valor), font=("Arial", 12), bg=COR_SECUNDARIA, fg=COR_TEXTO)
+            label_valor.grid(row=i, column=1, sticky="w", pady=5)
+        
+        # Close button
+        btn_fechar = tk.Button(ficha_window, text="Fechar", command=ficha_window.destroy, width=20)
+        configurar_botao(btn_fechar)
+        btn_fechar.pack(pady=20)
 
         
     dashboard = tk.Tk()
@@ -511,7 +575,7 @@ def open_dashboard():
     frame_form.pack(pady=10)
 
     # Estilização dos campos do formulário
-    for i, texto in enumerate(["Nome:", "Valor:", "Data Doação:", "Aniversário:", "Telefone:", "Endereço:"]):
+    for i, texto in enumerate(["Nome:", "Valor:", "Data Doação:", "Aniversário:", "Telefone:", "Endereço:", "Agente"]):
         label = tk.Label(frame_form, text=texto, bg=COR_SECUNDARIA)
         configurar_label(label)
         label.grid(row=i, column=0, padx=8, pady=8, sticky="e")
@@ -523,7 +587,8 @@ def open_dashboard():
         ("entry_data_doacao", None),
         ("entry_aniversario", lambda e: formatar_data_digitacao(e, entry_aniversario)),
         ("entry_telefone", None),
-        ("entry_endereco", None)
+        ("entry_endereco", None),
+        ("entry_agente", None)
     ]
 
     for i, (nome, comando) in enumerate(entries):
@@ -542,7 +607,7 @@ def open_dashboard():
     # Botão de cadastro estilizado
     btn_cadastrar = tk.Button(frame_form, text="Cadastrar", command=cadastrar_dizimista, width=20, pady=8)
     configurar_botao(btn_cadastrar)
-    btn_cadastrar.grid(row=6, column=0, columnspan=2, pady=15)
+    btn_cadastrar.grid(row=7, column=0, columnspan=2, pady=15)
 
     # Frame de filtro estilizado
     frame_filtro = tk.Frame(frame_center, bg=COR_SECUNDARIA, padx=15, pady=15)
@@ -604,6 +669,10 @@ def open_dashboard():
     btn_sortear = tk.Button(frame_center, text="Sortear Dizimista", command=sortear_dizimista, width=20)
     configurar_botao(btn_sortear, cor_bg="#6f42c1")  # Roxo para botão de sorteio
     btn_sortear.pack(pady=15)
+
+    btn_ficha = tk.Button(frame_center, text="Ficha Dizimista", command=mostrar_ficha_dizimista, width=20)
+    configurar_botao(btn_ficha, cor_bg="#17a2b8")  # Azul claro para o botão de ficha
+    btn_ficha.pack(pady=15)
 
     carregar_dizimistas()
     atualizar_sumarios()
