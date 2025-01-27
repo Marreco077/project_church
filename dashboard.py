@@ -273,7 +273,7 @@ def open_dashboard():
                 WHERE LOWER(nome) LIKE ?
             """, (f"%{nome_filtro}%",))
         else:
-            cursor.execute("SELECT id, nome, valor, data_doacao, aniversario, telefone, endereco, status_atraso, FROM dizimistas")
+            cursor.execute("SELECT id, nome, valor, data_doacao, aniversario, telefone, endereco, status_atraso FROM dizimistas")
             
         rows = cursor.fetchall()
         conn.close()
