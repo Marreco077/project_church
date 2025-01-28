@@ -4,6 +4,27 @@ def create_database():
     conn = sqlite3.connect("dizimos.db")
     cursor = conn.cursor()
     
+    # Tabela de usuários
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario TEXT NOT NULL UNIQUE,
+            senha TEXT NOT NULL
+        )
+    """)
+    
+    # Inserir usuários padrão se a tabela estiver vazia
+    cursor.execute("SELECT COUNT(*) FROM usuarios")
+    if cursor.fetchone()[0] == 0:
+        usuarios = [
+            ("secretario", "admin123"),
+            ("teste", "123")
+        ]
+        cursor.executemany("""
+            INSERT INTO usuarios (usuario, senha)
+            VALUES (?, ?)
+        """, usuarios)
+    
     # Tabela de dizimistas
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS dizimistas (
