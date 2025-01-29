@@ -1,16 +1,35 @@
 import tkinter as tk
+from login_screen import create_login_screen
+import os
+import sqlite3
+import sys
 
-def on_click():
-    label.config(text="Você clicou no botão!")
+def resource_path(relative_path):
+    """ Retorna o caminho absoluto para recursos. """
+    try:
+        # Quando executado como um executável
+        base_path = sys._MEIPASS
+    except AttributeError:
+        # Quando executado como script Python
+        base_path = os.path.abspath(".")
 
-window = tk.Tk()
-window.title("Exemplo com Tkinter")
-window.geometry("500x500")
+    return os.path.join(base_path, relative_path)
 
-label = tk.Label(window, text="Hello, Tkinter!")
-label.pack(pady=10)
+def main():
+    # Obter o diretório onde o executável está sendo executado
+    if getattr(sys, 'frozen', False):
+        application_path = os.path.dirname(sys.executable)
+    else:
+        application_path = os.path.dirname(os.path.abspath(__file__))
 
-button = tk.Button(window, text="Clique aqui", command=on_click)
-button.pack(pady=10)
+    db_path = os.path.join(application_path, 'dizimos.db')
+    conn = sqlite3.connect(db_path)
+    conn.close()
+    
+    # Iniciar a interface gráfica
+    root = tk.Tk()
+    create_login_screen(root)
+    root.mainloop()
 
-window.mainloop()
+if __name__ == "__main__":
+    main()

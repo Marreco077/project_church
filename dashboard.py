@@ -316,6 +316,18 @@ def open_dashboard():
         entry_endereco.delete(0, tk.END)
         entry_endereco.insert(0, item['values'][6])
         
+        # Adicionar preenchimento do campo agente
+        entry_agente.delete(0, tk.END)
+        
+        # Buscar o agente atual do banco de dados
+        conn = sqlite3.connect("dizimos.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT agente FROM dizimistas WHERE id = ?", (dizimista_id,))
+        agente = cursor.fetchone()[0]
+        conn.close()
+        
+        entry_agente.insert(0, agente if agente else "")
+        
         # Remove existing update button if it exists
         for widget in frame_form.grid_slaves():
             if isinstance(widget, tk.Button) and widget['text'] == "Confirmar Atualização":

@@ -1,7 +1,21 @@
+import os
 import sqlite3
+import sys
+
+def resource_path(relative_path):
+    """ Retorna o caminho absoluto para recursos. """
+    try:
+        # Quando executado como um executável
+        base_path = sys._MEIPASS
+    except AttributeError:
+        # Quando executado como script Python
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 def create_database():
-    conn = sqlite3.connect("dizimos.db")
+    db_path = resource_path("dizimos.db")
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
     # Tabela de usuários
