@@ -39,7 +39,7 @@ def create_database():
             VALUES (?, ?)
         """, usuarios)
     
-    # Tabela de dizimistas
+    # Tabela de dizimistas com novo campo comunidade
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS dizimistas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,7 +50,8 @@ def create_database():
             telefone TEXT NOT NULL,
             endereco TEXT,
             status_atraso TEXT DEFAULT 'Em dia',
-            agente TEXT DEFAULT "Nenhum"
+            agente TEXT DEFAULT "Nenhum",
+            comunidade TEXT DEFAULT "Nenhuma"
         )
     """)
     

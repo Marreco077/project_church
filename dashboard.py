@@ -15,44 +15,92 @@ def open_dashboard():
     COR_SECUNDARIA = "#ffffff"  # Branco para cards
     COR_TEXTO = "#202124"  # Cinza escuro para texto
     COR_DESTAQUE = "#e8f0fe"  # Azul claro para hover
+
+    global comunidade_atual
+    comunidade_atual = None
+    COMUNIDADES = [None, "São João", "São José", "Santos Reis", "Rosário", "Santa Terezinha"]
     
     def sort_by_column(tree, col):
         """Ordena o conteúdo da treeview quando o cabeçalho da coluna é clicado."""
-        # Obtém a direção atual da ordenação (^ para ascendente, v para descendente)
+        if col == "Comunidade":
+            global comunidade_atual
+            # Encontra o próximo índice na lista de comunidades
+            if comunidade_atual not in COMUNIDADES:
+                comunidade_atual = COMUNIDADES[0]  # Começa do primeiro
+            else:
+                atual_index = COMUNIDADES.index(comunidade_atual)
+                comunidade_atual = COMUNIDADES[(atual_index + 1) % len(COMUNIDADES)]
+            
+            # Atualiza o texto do cabeçalho
+            if comunidade_atual:
+                tree.heading(col, text=f"{comunidade_atual}")
+            else:
+                tree.heading(col, text="Comunidade")
+            
+            # Filtra os itens
+            filtrar_por_comunidade()
+            return
+
+        # Código original de ordenação para outras colunas
         if not hasattr(tree, '_sort_dir'):
             tree._sort_dir = {}
         current_dir = tree._sort_dir.get(col, '')
         
-        # Alterna a direção
         new_dir = '' if current_dir == 'v' else 'v'
         tree._sort_dir[col] = new_dir
         
-        # Atualiza o texto do cabeçalho com a seta de direção
         for column in tree['columns']:
             if column == col:
                 tree.heading(column, text=f"{column} {'↓' if new_dir == 'v' else '↑'}")
             else:
                 tree.heading(column, text=column)
         
-        # Obtém todos os itens da árvore
         items = [(tree.set(item, col), item) for item in tree.get_children('')]
         
-        # Define a função de ordenação baseada no tipo de coluna
         def convert_value(value):
             if col == "ID":
                 return int(value)
             elif col == "Valor":
                 return float(value.replace("R$", "").replace(".", "").replace(",", "."))
             elif col == "Status":
-                return (value != "Faltando", value.lower())  # Mantém "Faltando" sempre no topo
-            return value.lower()  # Para outras colunas, converte para minúsculo
+                return (value != "Faltando", value.lower())
+            return value.lower()
         
-        # Ordena os itens
         items.sort(key=lambda x: convert_value(x[0]), reverse=(new_dir == 'v'))
         
-        # Reorganiza os itens nas posições ordenadas
         for index, (_, item) in enumerate(items):
             tree.move(item, '', index)
+
+    def filtrar_por_comunidade():
+        """Filtra os dizimistas pela comunidade selecionada"""
+        for item in tabela.get_children():
+            tabela.delete(item)
+        
+        conn = sqlite3.connect("dizimos.db")
+        cursor = conn.cursor()
+        
+        if comunidade_atual:
+            cursor.execute("""
+                SELECT id, nome, valor, data_doacao, comunidade, telefone, endereco, status_atraso 
+                FROM dizimistas 
+                WHERE LOWER(comunidade) = LOWER(?)
+            """, (comunidade_atual,))
+        else:
+            cursor.execute("SELECT id, nome, valor, data_doacao, comunidade, telefone, endereco, status_atraso FROM dizimistas")
+            
+        rows = cursor.fetchall()
+        conn.close()
+        
+        tabela.tag_configure('faltando', foreground='red')
+        
+        for row in rows:
+            valor_formatado = f"R${float(row[2]):,.2f}".replace(".", ",")
+            row_formatado = list(row)
+            row_formatado[2] = valor_formatado
+            item = tabela.insert("", "end", values=row_formatado)
+            
+            if row_formatado[7] == 'Faltando':
+                tabela.item(item, tags=('faltando',))
 
     # Estilo para botões
     def configurar_botao(botao, cor_bg=COR_PRIMARIA):
@@ -268,12 +316,12 @@ def open_dashboard():
         
         if nome_filtro:
             cursor.execute("""
-                SELECT id, nome, valor, data_doacao, aniversario, telefone, endereco, status_atraso 
+                SELECT id, nome, valor, data_doacao, comunidade, telefone, endereco, status_atraso 
                 FROM dizimistas 
                 WHERE LOWER(nome) LIKE ?
             """, (f"%{nome_filtro}%",))
         else:
-            cursor.execute("SELECT id, nome, valor, data_doacao, aniversario, telefone, endereco, status_atraso FROM dizimistas")
+            cursor.execute("SELECT id, nome, valor, data_doacao, comunidade, telefone, endereco, status_atraso FROM dizimistas")
             
         rows = cursor.fetchall()
         conn.close()
@@ -287,6 +335,26 @@ def open_dashboard():
             if row_formatado[7] == 'Faltando':
                 tabela.item(item, tags=('faltando',))
 
+    def cancelar_atualizacao():
+        # Limpar todos os campos
+        entry_nome.delete(0, tk.END)
+        entry_valor.delete(0, tk.END)
+        entry_valor.insert(0, "R$0,00")
+        entry_aniversario.delete(0, tk.END)
+        entry_telefone.delete(0, tk.END)
+        entry_endereco.delete(0, tk.END)
+        entry_agente.delete(0, tk.END)
+        entry_comunidade.delete(0, tk.END)
+        
+        # Remove os botões de atualização e cancelar
+        for widget in frame_form.grid_slaves():
+            if isinstance(widget, tk.Button) and (widget['text'] == "Confirmar Atualização" or widget['text'] == "Cancelar Atualização"):
+                widget.destroy()
+        
+        # Restaura o botão de cadastrar
+        btn_cadastrar = tk.Button(frame_form, text="Cadastrar", command=cadastrar_dizimista, width=20, pady=8)
+        configurar_botao(btn_cadastrar)
+        btn_cadastrar.grid(row=8, column=0, columnspan=2, pady=15)
 
     def atualizar_dizimista():
         selected_item = tabela.selection()
@@ -299,40 +367,50 @@ def open_dashboard():
         
         # Preenche os campos do formulário com os dados atuais
         entry_nome.delete(0, tk.END)
-        entry_nome.insert(0, item['values'][1])
+        entry_nome.insert(0, item['values'][1])  # Nome
         
         entry_valor.delete(0, tk.END)
-        entry_valor.insert(0, item['values'][2])
+        entry_valor.insert(0, item['values'][2])  # Valor
         
         entry_data_doacao.delete(0, tk.END)
-        entry_data_doacao.insert(0, item['values'][3])
+        entry_data_doacao.insert(0, item['values'][3])  # Data Doação
         
-        entry_aniversario.delete(0, tk.END)
-        entry_aniversario.insert(0, item['values'][4])
-        
-        entry_telefone.delete(0, tk.END)
-        entry_telefone.insert(0, item['values'][5])
-        
-        entry_endereco.delete(0, tk.END)
-        entry_endereco.insert(0, item['values'][6])
-        
-        # Adicionar preenchimento do campo agente
-        entry_agente.delete(0, tk.END)
-        
-        # Buscar o agente atual do banco de dados
+        # Buscar o aniversário do banco de dados
         conn = sqlite3.connect("dizimos.db")
         cursor = conn.cursor()
+        cursor.execute("SELECT aniversario FROM dizimistas WHERE id = ?", (dizimista_id,))
+        aniversario = cursor.fetchone()[0]
+        
+        entry_aniversario.delete(0, tk.END)
+        entry_aniversario.insert(0, aniversario)  # Aniversário do banco
+        
+        entry_telefone.delete(0, tk.END)
+        entry_telefone.insert(0, item['values'][5])  # Telefone
+        
+        entry_endereco.delete(0, tk.END)
+        entry_endereco.insert(0, item['values'][6])  # Endereço
+        
+        entry_comunidade.delete(0, tk.END)
+        entry_comunidade.insert(0, item['values'][4])  # Comunidade
+        
+        # Buscar o agente do banco de dados
         cursor.execute("SELECT agente FROM dizimistas WHERE id = ?", (dizimista_id,))
         agente = cursor.fetchone()[0]
         conn.close()
         
+        entry_agente.delete(0, tk.END)
         entry_agente.insert(0, agente if agente else "")
         
-        # Remove existing update button if it exists
+        # Remove o botão de cadastrar existente
         for widget in frame_form.grid_slaves():
-            if isinstance(widget, tk.Button) and widget['text'] == "Confirmar Atualização":
+            if isinstance(widget, tk.Button) and widget['text'] == "Cadastrar":
+                widget.destroy()
+            elif isinstance(widget, tk.Button) and widget['text'] == "Confirmar Atualização":
+                widget.destroy()
+            elif isinstance(widget, tk.Button) and widget['text'] == "Cancelar Atualização":
                 widget.destroy()
         
+        # Adiciona o botão de confirmar atualização
         btn_confirmar_atualizacao = tk.Button(
             frame_form, 
             text="Confirmar Atualização", 
@@ -342,6 +420,17 @@ def open_dashboard():
         )
         configurar_botao(btn_confirmar_atualizacao)
         btn_confirmar_atualizacao.grid(row=8, column=0, columnspan=2, pady=15)
+        
+        # Adiciona o botão de cancelar atualização
+        btn_cancelar_atualizacao = tk.Button(
+            frame_form, 
+            text="Cancelar Atualização", 
+            command=cancelar_atualizacao, 
+            width=20, 
+            pady=8
+        )
+        configurar_botao(btn_cancelar_atualizacao, cor_bg="#dc3545")  # Vermelho para botão de cancelar
+        btn_cancelar_atualizacao.grid(row=9, column=0, columnspan=2, pady=15)
 
         
     def confirmar_atualizacao(dizimista_id):
@@ -351,10 +440,11 @@ def open_dashboard():
         telefone = entry_telefone.get()
         endereco = entry_endereco.get()
         agente = entry_agente.get()
+        comunidade = entry_comunidade.get()
         
         data_doacao = datetime.now().strftime('%d/%m/%Y')
         
-        if not nome or not valor or not aniversario or not telefone or not endereco or not agente:
+        if not nome or not valor or not aniversario or not telefone or not endereco:
             messagebox.showerror("Erro", "Todos os campos devem ser preenchidos.")
             return
         
@@ -366,9 +456,9 @@ def open_dashboard():
             # Update dizimista
             cursor.execute("""
                 UPDATE dizimistas 
-                SET nome=?, valor=?, data_doacao=?, aniversario=?, telefone=?, endereco=?, agente=?
+                SET nome=?, valor=?, data_doacao=?, aniversario=?, telefone=?, endereco=?, agente=?, comunidade=?
                 WHERE id=?
-            """, (nome, valor_convertido, data_doacao, aniversario, telefone, endereco, agente, dizimista_id))
+            """, (nome, valor_convertido, data_doacao, aniversario, telefone, endereco, agente, comunidade, dizimista_id))
             
             # Add to historical data
             cursor.execute("""
@@ -387,11 +477,17 @@ def open_dashboard():
             entry_telefone.delete(0, tk.END)
             entry_endereco.delete(0, tk.END)
             entry_agente.delete(0, tk.END)
+            entry_comunidade.delete(0, tk.END)
             
-            # Remove update button
+            # Remove os botões de atualização e cancelar
             for widget in frame_form.grid_slaves():
-                if isinstance(widget, tk.Button) and widget['text'] == "Confirmar Atualização":
+                if isinstance(widget, tk.Button) and (widget['text'] == "Confirmar Atualização" or widget['text'] == "Cancelar Atualização"):
                     widget.destroy()
+            
+            # Restaura o botão de cadastrar
+            btn_cadastrar = tk.Button(frame_form, text="Cadastrar", command=cadastrar_dizimista, width=20, pady=8)
+            configurar_botao(btn_cadastrar)
+            btn_cadastrar.grid(row=8, column=0, columnspan=2, pady=15)
             
             carregar_dizimistas()
             messagebox.showinfo("Sucesso", "Dizimista atualizado com sucesso!")
@@ -417,7 +513,7 @@ def open_dashboard():
         
         conn = sqlite3.connect("dizimos.db")
         cursor = conn.cursor()
-        cursor.execute("SELECT id, nome, valor, data_doacao, aniversario, telefone, endereco, status_atraso, agente FROM dizimistas")
+        cursor.execute("SELECT id, nome, valor, data_doacao, comunidade, telefone, endereco, status_atraso, agente FROM dizimistas")
         rows = cursor.fetchall()
         conn.close()
         
@@ -442,6 +538,7 @@ def open_dashboard():
         telefone = entry_telefone.get()
         endereco = entry_endereco.get()
         agente = entry_agente.get()
+        comunidade = entry_comunidade.get()
         
         data_doacao = datetime.now().strftime('%d/%m/%Y')
         
@@ -456,9 +553,9 @@ def open_dashboard():
             
             # Inserir dizimista
             cursor.execute("""
-                INSERT INTO dizimistas (nome, valor, data_doacao, aniversario, telefone, endereco)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (nome, valor_convertido, data_doacao, aniversario, telefone, endereco))
+                INSERT INTO dizimistas (nome, valor, data_doacao, aniversario, telefone, endereco, agente, comunidade)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (nome, valor_convertido, data_doacao, aniversario, telefone, endereco, agente, comunidade))
             
             dizimista_id = cursor.lastrowid
             
@@ -480,6 +577,7 @@ def open_dashboard():
             entry_telefone.delete(0, tk.END)
             entry_endereco.delete(0, tk.END)
             entry_agente.delete(0, tk.END)
+            entry_comunidade.delete(0, tk.END)
             
             carregar_dizimistas()
             messagebox.showinfo("Sucesso", "Dizimista cadastrado com sucesso!")
@@ -571,10 +669,12 @@ def open_dashboard():
         frame_info.pack(expand=False, fill="x", padx=20, pady=20)
         
         # Basic information of the member
+        # Atualizado para mostrar os campos corretos com seus respectivos índices
         informacoes = [
             ("ID:", dizimista_dados[0]),
             ("Nome:", dizimista_dados[1]),
-            ("Aniversário:", dizimista_dados[4]),
+            ("Comunidade:", dizimista_dados[4]),  # índice 4 é comunidade
+            ("Aniversário:", dizimista_dados[3]),
             ("Telefone:", dizimista_dados[5]),
             ("Endereço:", dizimista_dados[6]),
             ("Status de Pagamento:", dizimista_dados[7])
@@ -711,7 +811,7 @@ def open_dashboard():
     frame_form.pack(pady=10)
 
     # Estilização dos campos do formulário
-    for i, texto in enumerate(["Nome:", "Valor:", "Data Doação:", "Aniversário:", "Telefone:", "Endereço:", "Agente"]):
+    for i, texto in enumerate(["Nome:", "Valor:", "Data Doação:", "Aniversário:", "Telefone:", "Endereço:", "Agente:", "Comunidade:"]):
         label = tk.Label(frame_form, text=texto, bg=COR_SECUNDARIA)
         configurar_label(label)
         label.grid(row=i, column=0, padx=8, pady=8, sticky="e")
@@ -724,7 +824,8 @@ def open_dashboard():
         ("entry_aniversario", lambda e: formatar_data_digitacao(e, entry_aniversario)),
         ("entry_telefone", None),
         ("entry_endereco", None),
-        ("entry_agente", None)
+        ("entry_agente", None),
+        ("entry_comunidade", None)
     ]
 
     for i, (nome, comando) in enumerate(entries):
@@ -743,7 +844,7 @@ def open_dashboard():
     # Botão de cadastro estilizado
     btn_cadastrar = tk.Button(frame_form, text="Cadastrar", command=cadastrar_dizimista, width=20, pady=8)
     configurar_botao(btn_cadastrar)
-    btn_cadastrar.grid(row=7, column=0, columnspan=2, pady=15)
+    btn_cadastrar.grid(row=8, column=0, columnspan=2, pady=15)
 
     # Frame de filtro estilizado
     frame_filtro = tk.Frame(frame_center, bg=COR_SECUNDARIA, padx=15, pady=15)
@@ -777,18 +878,18 @@ def open_dashboard():
     style.configure("Treeview.Heading", font=('Arial', 10, 'bold'))
     style.map('Treeview', background=[('selected', COR_PRIMARIA)])
 
-    tabela = ttk.Treeview(frame_center, columns=("ID", "Nome", "Valor", "Data Doação", "Aniversário", "Telefone", "Endereço", "Status"), show="headings")
+    tabela = ttk.Treeview(frame_center, columns=("ID", "Nome", "Valor", "Data Doação", "Comunidade", "Telefone", "Endereço", "Status"), show="headings")
     tabela.tag_configure('faltando', foreground='red')
     tabela.pack(fill="both", expand=True, padx=10, pady=10)
 
-    for col in ["ID", "Nome", "Valor", "Data Doação", "Aniversário", "Telefone", "Endereço", "Status"]:
+    for col in ["ID", "Nome", "Valor", "Data Doação", "Comunidade", "Telefone", "Endereço", "Status"]:
         tabela.heading(col, text=col, command=lambda c=col: sort_by_column(tabela, c))
 
     tabela.column("ID", width=25)
     tabela.column("Nome", width=160)
     tabela.column("Valor", width=80)
     tabela.column("Data Doação", width=100)
-    tabela.column("Aniversário", width=100)
+    tabela.column("Comunidade", width=100)
     tabela.column("Telefone", width=100)
     tabela.column("Endereço", width=200)
     tabela.column("Status", width=80)
