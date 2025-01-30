@@ -613,23 +613,88 @@ def open_dashboard():
                 messagebox.showerror("Erro", f"Erro ao excluir: {e}")
 
     def sortear_dizimista():
-        items = tabela.get_children()
+        global janela_selecao, frame_botoes  
+
+        # Criar janela de seleção
+        janela_selecao = Toplevel()
+        janela_selecao.title("Selecionar Comunidade para Sorteio")
+        janela_selecao.geometry("400x500")
+        janela_selecao.configure(bg=COR_FUNDO)
+        janela_selecao.resizable(False, False)
+        janela_selecao.grab_set()
+
+        # Centralizar a janela
+        janela_selecao.update_idletasks()
+        width = janela_selecao.winfo_width()
+        height = janela_selecao.winfo_height()
+        x = (janela_selecao.winfo_screenwidth() // 2) - (width // 2)
+        y = (janela_selecao.winfo_screenheight() // 2) - (height // 2)
+        janela_selecao.geometry(f"{width}x{height}+{x}+{y}")
+
+        # Frame para os botões
+        frame_botoes = tk.Frame(janela_selecao, bg=COR_FUNDO)
+        frame_botoes.pack(expand=True, fill="both", padx=20, pady=20)
+
+        # Label de instrução
+        label_instrucao = tk.Label(
+            frame_botoes,
+            text="Selecione a comunidade para o sorteio:",
+            font=("Arial", 12, "bold"),
+            bg=COR_FUNDO,
+            fg=COR_TEXTO
+        )
+        label_instrucao.pack(pady=10)
+
+        comunidades = ["São João", "Santa Terezinha", "São José", "Santos Reis", "Rosário", "Todos"]
+
+        # Criar botões para cada comunidade
+        for comunidade in comunidades:
+            btn = tk.Button(
+                frame_botoes,
+                text=comunidade,
+                font=("Arial", 12),
+                width=20,
+                command=lambda c=comunidade: realizar_sorteio(c)
+            )
+            btn.pack(pady=5)
+
+    def realizar_sorteio(comunidade=None):
+        global janela_selecao  
         
-        item_sorteado = random.choice(items)
-        dados_sorteado = tabela.item(item_sorteado)['values']
+        conn = sqlite3.connect("dizimos.db")
+        cursor = conn.cursor()
         
-        mensagem = f"""O vencedor do sorteio foi:
+        if comunidade and comunidade != "Todos":
+            cursor.execute("""
+                SELECT id, nome, telefone, endereco 
+                FROM dizimistas 
+                WHERE comunidade = ?
+            """, (comunidade,))
+        else:
+            cursor.execute("SELECT id, nome, telefone, endereco FROM dizimistas")
+            
+        dizimistas = cursor.fetchall()
+        conn.close()
         
-        Nome: {dados_sorteado[1]}
-        Telefone: {dados_sorteado[5]}
-        Endereço: {dados_sorteado[6]}"""
+        if not dizimistas:
+            messagebox.showwarning("Aviso", "Não há dizimistas cadastrados nesta comunidade!")
+            return
         
+        sorteado = random.choice(dizimistas)
+        
+        # Fechar janela de seleção
+        if janela_selecao:
+            janela_selecao.destroy()
+        
+        # Criar janela do resultado
         popup = Toplevel()
-        popup.title("Sorteio")
-        popup.geometry("400x250")
+        popup.title("Resultado do Sorteio")
+        popup.geometry("400x300")
+        popup.configure(bg=COR_SECUNDARIA)
         popup.resizable(False, False)
         popup.grab_set()
         
+        # Centralizar a janela de resultado
         popup.update_idletasks()
         width = popup.winfo_width()
         height = popup.winfo_height()
@@ -637,16 +702,32 @@ def open_dashboard():
         y = (popup.winfo_screenheight() // 2) - (height // 2)
         popup.geometry(f"{width}x{height}+{x}+{y}")
         
+        # Texto do vencedor
+        comunidade_texto = f"\nComunidade {comunidade}" if comunidade and comunidade != "Todos" else ""
+        mensagem = f"""O vencedor do sorteio da {comunidade_texto}:
+        
+    Nome: {sorteado[1]}
+    Telefone: {sorteado[2]}
+    Endereço: {sorteado[3]}"""
+        
         label = tk.Label(
-            popup, 
-            text=mensagem, 
-            font=("Arial", 16, "bold"), 
-            wraplength=350, 
+            popup,
+            text=mensagem,
+            font=("Arial", 14, "bold"),
+            bg=COR_SECUNDARIA,
+            fg=COR_TEXTO,
+            wraplength=350,
             justify="center"
         )
         label.pack(pady=20)
         
-        button = tk.Button(popup, text="OK", font=("Arial", 12), command=popup.destroy)
+        button = tk.Button(
+            popup,
+            text="OK",
+            command=popup.destroy,
+            width=10,
+            font=("Arial", 12)
+        )
         button.pack(pady=10)
 
     def mostrar_ficha_dizimista():
