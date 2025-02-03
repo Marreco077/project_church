@@ -434,13 +434,13 @@ def open_dashboard():
 
         
     def confirmar_atualizacao(dizimista_id):
-        nome = entry_nome.get()
+        nome = entry_nome.get().title()
         valor = entry_valor.get()
         aniversario = entry_aniversario.get()
         telefone = entry_telefone.get()
-        endereco = entry_endereco.get()
-        agente = entry_agente.get()
-        comunidade = entry_comunidade.get()
+        endereco = entry_endereco.get().title()
+        agente = entry_agente.get().title()
+        comunidade = entry_comunidade.get().title()
         
         data_doacao = datetime.now().strftime('%d/%m/%Y')
         
@@ -532,13 +532,13 @@ def open_dashboard():
         atualizar_tabela_mensal(tree_mensal)
 
     def cadastrar_dizimista():
-        nome = entry_nome.get()
+        nome = entry_nome.get().title()
         valor = entry_valor.get()
         aniversario = entry_aniversario.get()
         telefone = entry_telefone.get()
-        endereco = entry_endereco.get()
-        agente = entry_agente.get()
-        comunidade = entry_comunidade.get()
+        endereco = entry_endereco.get().title()
+        agente = entry_agente.get().title()
+        comunidade = entry_comunidade.get().title()
         
         data_doacao = datetime.now().strftime('%d/%m/%Y')
         
@@ -738,6 +738,12 @@ def open_dashboard():
         
         item = tabela.item(selected_item)
         dizimista_dados = item['values']
+
+        conn = sqlite3.connect("dizimos.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT aniversario FROM dizimistas WHERE id = ?", (dizimista_dados[0],))
+        aniversario = cursor.fetchone()[0]
+        conn.close()
         
         # Create new window for the record
         ficha_window = tk.Toplevel()
@@ -755,7 +761,7 @@ def open_dashboard():
             ("ID:", dizimista_dados[0]),
             ("Nome:", dizimista_dados[1]),
             ("Comunidade:", dizimista_dados[4]),  # índice 4 é comunidade
-            ("Aniversário:", dizimista_dados[3]),
+            ("Aniversário:", aniversario),
             ("Telefone:", dizimista_dados[5]),
             ("Endereço:", dizimista_dados[6]),
             ("Status de Pagamento:", dizimista_dados[7])
