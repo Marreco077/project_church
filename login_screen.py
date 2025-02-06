@@ -6,6 +6,7 @@ from PIL import Image, ImageTk
 import os
 import sys
 
+
 def resource_path(relative_path):
     """Obtém o caminho absoluto do recurso"""
     try:
@@ -15,18 +16,21 @@ def resource_path(relative_path):
         base_path = os.path.abspath(os.path.dirname(__file__))
     return os.path.join(base_path, relative_path)
 
+
 def create_login_screen(root):
     def login():
         usuario = entry_usuario.get()
         senha = entry_senha.get()
-        
+
         conn = sqlite3.connect(resource_path("dizimos.db"))
         cursor = conn.cursor()
-        
-        cursor.execute("SELECT * FROM usuarios WHERE usuario = ? AND senha = ?", (usuario, senha))
+
+        cursor.execute(
+            "SELECT * FROM usuarios WHERE usuario = ? AND senha = ?", (usuario, senha)
+        )
         result = cursor.fetchone()
         conn.close()
-        
+
         if result:
             messagebox.showinfo("Login", "Login bem-sucedido!")
             root.destroy()
@@ -61,71 +65,83 @@ def create_login_screen(root):
         background_label.place(x=0, y=0, relwidth=1, relheight=1)
     except Exception as e:
         print(f"Erro ao carregar a imagem: {e}")
-        background_label = tk.Label(root, bg='#f0f0f0')
+        background_label = tk.Label(root, bg="#f0f0f0")
         background_label.place(x=0, y=0, relwidth=1, relheight=1)
 
     # Frame de login
-    login_frame = tk.Frame(root, bg='white', bd=10, relief="ridge", 
-                          highlightbackground="#2196F3", highlightthickness=2)
+    login_frame = tk.Frame(
+        root,
+        bg="white",
+        bd=10,
+        relief="ridge",
+        highlightbackground="#2196F3",
+        highlightthickness=2,
+    )
     login_frame.place(x=750, y=50)
 
     # Título
-    titulo = tk.Label(login_frame, 
-                     text="Sistema Dizimista Bom Pastor",
-                     font=("Helvetica", 18, "bold"),
-                     bg='white',
-                     fg="#2196F3",
-                     justify="center")
+    titulo = tk.Label(
+        login_frame,
+        text="Sistema Dizimista Bom Pastor",
+        font=("Helvetica", 18, "bold"),
+        bg="white",
+        fg="#2196F3",
+        justify="center",
+    )
     titulo.grid(row=0, column=0, pady=20, padx=20)
 
-    style_label = {'font': ("Helvetica", 12),
-                   'bg': 'white',
-                   'fg': '#333333'}
+    style_label = {"font": ("Helvetica", 12), "bg": "white", "fg": "#333333"}
 
     # Campo de usuário
     tk.Label(login_frame, text="Usuário:", **style_label).grid(row=1, column=0, pady=5)
-    entry_usuario = tk.Entry(login_frame, 
-                           font=("Helvetica", 12), 
-                           bg="white", 
-                           fg="#333333", 
-                           relief="flat", 
-                           width=30,
-                           highlightthickness=2,
-                           highlightbackground="#CCCCCC",
-                           highlightcolor="#2196F3")
+    entry_usuario = tk.Entry(
+        login_frame,
+        font=("Helvetica", 12),
+        bg="white",
+        fg="#333333",
+        relief="flat",
+        width=30,
+        highlightthickness=2,
+        highlightbackground="#CCCCCC",
+        highlightcolor="#2196F3",
+    )
     entry_usuario.grid(row=2, column=0, pady=5)
     entry_usuario.bind("<FocusIn>", on_enter_entry)
     entry_usuario.bind("<FocusOut>", on_leave_entry)
 
     # Campo de senha
     tk.Label(login_frame, text="Senha:", **style_label).grid(row=3, column=0, pady=5)
-    entry_senha = tk.Entry(login_frame, 
-                         show="*", 
-                         font=("Helvetica", 12), 
-                         bg="white", 
-                         fg="#333333", 
-                         relief="flat", 
-                         width=30,
-                         highlightthickness=2,
-                         highlightbackground="#CCCCCC",
-                         highlightcolor="#2196F3")
+    entry_senha = tk.Entry(
+        login_frame,
+        show="*",
+        font=("Helvetica", 12),
+        bg="white",
+        fg="#333333",
+        relief="flat",
+        width=30,
+        highlightthickness=2,
+        highlightbackground="#CCCCCC",
+        highlightcolor="#2196F3",
+    )
     entry_senha.grid(row=4, column=0, pady=5)
     entry_senha.bind("<FocusIn>", on_enter_entry)
     entry_senha.bind("<FocusOut>", on_leave_entry)
 
     # Botão de login
-    login_button = tk.Button(login_frame,
-                           text="Entrar",
-                           command=login,
-                           width=20,
-                           font=("Helvetica", 14, "bold"),
-                           bg="#FF66B2",
-                           fg="white",
-                           activebackground="#FF3385",
-                           activeforeground="white",
-                           cursor="hand2",
-                           relief="flat",
-                           bd=5)
+    login_button = tk.Button(
+        login_frame,
+        text="Entrar",
+        command=login,
+        width=20,
+        font=("Helvetica", 14, "bold"),
+        bg="#FF66B2",
+        fg="white",
+        activebackground="#FF3385",
+        activeforeground="white",
+        cursor="hand2",
+        relief="flat",
+        bd=5,
+    )
     login_button.grid(row=5, column=0, pady=20)
 
     # Ajustar padding
