@@ -869,29 +869,24 @@ def open_dashboard():
         aniversario = cursor.fetchone()[0]
         conn.close()
 
-        # Create new window for the record
         ficha_window = tk.Toplevel()
         ficha_window.title(f"Ficha do Dizimista - {dizimista_dados[1]}")
         ficha_window.geometry("800x800")
         ficha_window.configure(bg=COR_FUNDO)
 
-        # Frame for basic information
         frame_info = tk.Frame(ficha_window, bg=COR_SECUNDARIA, padx=20, pady=20)
         frame_info.pack(expand=False, fill="x", padx=20, pady=20)
 
-        # Basic information of the member
         # Atualizado para mostrar os campos corretos com seus respectivos índices
         informacoes = [
             ("ID:", dizimista_dados[0]),
             ("Nome:", dizimista_dados[1]),
-            ("Comunidade:", dizimista_dados[4]),  # índice 4 é comunidade
+            ("Comunidade:", dizimista_dados[4]),
             ("Aniversário:", aniversario),
             ("Telefone:", dizimista_dados[5]),
             ("Endereço:", dizimista_dados[6]),
             ("Status de Pagamento:", dizimista_dados[7]),
         ]
-
-        # Create and style information labels
         for i, (label_text, valor) in enumerate(informacoes):
             label_nome = tk.Label(
                 frame_info,
@@ -911,11 +906,9 @@ def open_dashboard():
             )
             label_valor.grid(row=i, column=1, sticky="w", pady=5, padx=10)
 
-        # Frame for donation history
         frame_historico = tk.Frame(ficha_window, bg=COR_SECUNDARIA, padx=20, pady=20)
         frame_historico.pack(expand=True, fill="both", padx=20, pady=20)
 
-        # History label
         label_historico = tk.Label(
             frame_historico,
             text="Histórico de Doações",
@@ -925,7 +918,6 @@ def open_dashboard():
         )
         label_historico.pack(pady=10)
 
-        # Create Treeview for history
         tree_historico = ttk.Treeview(
             frame_historico, columns=("Data", "Valor", "Agente"), show="headings"
         )
@@ -939,7 +931,6 @@ def open_dashboard():
 
         tree_historico.pack(fill="both", expand=True)
 
-        # Get donation history
         conn = sqlite3.connect("dizimos.db")
         cursor = conn.cursor()
         cursor.execute(
@@ -955,7 +946,6 @@ def open_dashboard():
         historico = cursor.fetchall()
         conn.close()
 
-        # Fill history table
         total_doacoes = 0
         for data, valor, agente in historico:
             valor_formatado = f"R${float(valor):,.2f}".replace(".", ",")
@@ -964,7 +954,6 @@ def open_dashboard():
             )
             total_doacoes += valor
 
-        # Show total donations
         total_formatado = f"R${float(total_doacoes):,.2f}".replace(".", ",")
         label_total = tk.Label(
             frame_historico,
@@ -975,7 +964,6 @@ def open_dashboard():
         )
         label_total.pack(pady=10)
 
-        # Close button
         btn_fechar = tk.Button(
             ficha_window, text="Fechar", command=ficha_window.destroy, width=20
         )
