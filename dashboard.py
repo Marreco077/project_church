@@ -9,12 +9,12 @@ import random
 def open_dashboard():
     locale.setlocale(locale.LC_ALL, "pt_BR.UTF-8")
 
-    # Definição das cores
-    COR_FUNDO = "#f0f2f5"  # Cinza claro para o fundo
-    COR_PRIMARIA = "#1a73e8"  # Azul para botões principais
-    COR_SECUNDARIA = "#ffffff"  # Branco para cards
-    COR_TEXTO = "#202124"  # Cinza escuro para texto
-    COR_DESTAQUE = "#e8f0fe"  # Azul claro para hover
+
+    COR_FUNDO = "#f0f2f5" 
+    COR_PRIMARIA = "#1a73e8"  
+    COR_SECUNDARIA = "#ffffff" 
+    COR_TEXTO = "#202124"  
+    COR_DESTAQUE = "#e8f0fe"  
 
     global comunidade_atual
     comunidade_atual = None
@@ -24,6 +24,7 @@ def open_dashboard():
         "São José",
         "Santos Reis",
         "Rosário",
+        "Santo Antônio",
         "Santa Terezinha",
     ]
 
@@ -31,24 +32,20 @@ def open_dashboard():
         """Ordena o conteúdo da treeview quando o cabeçalho da coluna é clicado."""
         if col == "Comunidade":
             global comunidade_atual
-            # Encontra o próximo índice na lista de comunidades
             if comunidade_atual not in COMUNIDADES:
-                comunidade_atual = COMUNIDADES[0]  # Começa do primeiro
+                comunidade_atual = COMUNIDADES[0] 
             else:
                 atual_index = COMUNIDADES.index(comunidade_atual)
                 comunidade_atual = COMUNIDADES[(atual_index + 1) % len(COMUNIDADES)]
 
-            # Atualiza o texto do cabeçalho
             if comunidade_atual:
                 tree.heading(col, text=f"{comunidade_atual}")
             else:
                 tree.heading(col, text="Comunidade")
 
-            # Filtra os itens
             filtrar_por_comunidade()
             return
 
-        # Código original de ordenação para outras colunas
         if not hasattr(tree, "_sort_dir"):
             tree._sort_dir = {}
         current_dir = tree._sort_dir.get(col, "")
@@ -114,7 +111,6 @@ def open_dashboard():
             if row_formatado[7] == "Faltando":
                 tabela.item(item, tags=("faltando",))
 
-    # Estilo para botões
     def configurar_botao(botao, cor_bg=COR_PRIMARIA):
         botao.configure(
             bg=cor_bg,
@@ -126,7 +122,6 @@ def open_dashboard():
             font=("Arial", 10, "bold"),
         )
 
-    # Estilo para labels
     def configurar_label(label, size=10, bold=False):
         weight = "bold" if bold else "normal"
         label.configure(font=("Arial", size, weight), fg=COR_TEXTO, bg=COR_FUNDO)
@@ -134,14 +129,12 @@ def open_dashboard():
     def mostrar_aniversariantes():
         mes_atual = datetime.now().strftime("%m")
 
-        # Criar nova janela
         janela_aniversariantes = tk.Toplevel()
         janela_aniversariantes.title(
             f"Aniversariantes de {datetime.now().strftime('%B')}"
         )
         janela_aniversariantes.geometry("400x300")
 
-        # Criar Treeview
         tree = ttk.Treeview(
             janela_aniversariantes, columns=("Nome", "Aniversário"), show="headings"
         )
@@ -149,7 +142,6 @@ def open_dashboard():
         tree.heading("Aniversário", text="Aniversário")
         tree.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # Buscar aniversariantes
         conn = sqlite3.connect("dizimos.db")
         cursor = conn.cursor()
         cursor.execute(
@@ -220,11 +212,9 @@ def open_dashboard():
         conn.close()
 
     def criar_tabela_mensal(frame):
-        # Create a frame for the monthly table
         frame_tabela_mensal = tk.Frame(frame, bg=COR_SECUNDARIA, padx=15, pady=15)
         frame_tabela_mensal.pack(pady=20, fill="x")
 
-        # Add title
         label_titulo = tk.Label(
             frame_tabela_mensal,
             text=f"Total Mensal {datetime.now().year}",
@@ -234,7 +224,6 @@ def open_dashboard():
         )
         label_titulo.pack(pady=(0, 10))
 
-        # Create Treeview for monthly data
         tree_mensal = ttk.Treeview(
             frame_tabela_mensal, columns=("Mes", "Total"), show="headings", height=12
         )
@@ -249,18 +238,14 @@ def open_dashboard():
         return tree_mensal
 
     def atualizar_tabela_mensal(tree_mensal):
-        # Clear existing items
         for item in tree_mensal.get_children():
             tree_mensal.delete(item)
 
-        # Get current year
         ano_atual = datetime.now().year
 
-        # Connect to database
         conn = sqlite3.connect("dizimos.db")
         cursor = conn.cursor()
 
-        # Get monthly totals for current year
         meses = {
             "01": "Janeiro",
             "02": "Fevereiro",
@@ -293,6 +278,127 @@ def open_dashboard():
             tree_mensal.insert("", "end", values=(mes_nome, valor_formatado))
 
         conn.close()
+
+    def criar_tabela_comunidades(frame):
+        frame_tabela_comunidades = tk.Frame(frame, bg=COR_SECUNDARIA, padx=15, pady=15)
+        frame_tabela_comunidades.pack(pady=20, fill="x")
+
+        label_titulo = tk.Label(
+            frame_tabela_comunidades,
+            text=f"Total por Comunidade - {datetime.now().strftime('%B/%Y')}",
+            font=("Arial", 12, "bold"),
+            bg=COR_SECUNDARIA,
+            fg=COR_TEXTO,
+        )
+        label_titulo.pack(pady=(0, 10))
+
+        tree_comunidades = ttk.Treeview(
+            frame_tabela_comunidades, columns=("Comunidade", "Total"), show="headings", height=6
+        )
+        tree_comunidades.heading("Comunidade", text="Comunidade")
+        tree_comunidades.heading("Total", text="Total")
+
+        tree_comunidades.column("Comunidade", width=150)
+        tree_comunidades.column("Total", width=150)
+
+        tree_comunidades.pack(fill="x")
+
+        return tree_comunidades
+    
+    
+    def atualizar_tabela_comunidades(tree_comunidades):
+        for item in tree_comunidades.get_children():
+            tree_comunidades.delete(item)
+
+        mes_atual = datetime.now().strftime("%m")
+        ano_atual = datetime.now().strftime("%Y")
+
+        conn = sqlite3.connect("dizimos.db")
+        cursor = conn.cursor()
+
+        comunidades = COMUNIDADES[1:]
+        
+        
+        for comunidade in comunidades:
+            cursor.execute(
+                """
+                SELECT COALESCE(SUM(hd.valor), 0)
+                FROM historico_doacoes hd
+                JOIN dizimistas d ON hd.dizimista_id = d.id
+                WHERE substr(hd.data_doacao, 4, 2) = ? 
+                AND substr(hd.data_doacao, 7, 4) = ?
+                AND LOWER(d.comunidade) = LOWER(?)
+            """,
+                (mes_atual, str(ano_atual), comunidade),
+            )
+
+            total = cursor.fetchone()[0]
+            valor_formatado = locale.currency(total, grouping=True)
+
+            tree_comunidades.insert("", "end", values=(comunidade, valor_formatado))
+
+        conn.close()
+
+    def mostrar_total_mensal_por_comunidade():
+        janela_total_mensal = tk.Toplevel()
+        janela_total_mensal.title("Total Mensal por Comunidade")
+        janela_total_mensal.geometry("600x400")
+        janela_total_mensal.configure(bg=COR_FUNDO)
+        frame_tabela = tk.Frame(janela_total_mensal, bg=COR_SECUNDARIA, padx=15, pady=15)
+        frame_tabela.pack(fill="both", expand=True, padx=20, pady=20)
+        tree = ttk.Treeview(
+            frame_tabela, columns=("Mês", "Comunidade", "Total"), show="headings", height=15
+        )
+        tree.heading("Mês", text="Mês")
+        tree.heading("Comunidade", text="Comunidade")
+        tree.heading("Total", text="Total")
+        tree.column("Mês", width=150)
+        tree.column("Comunidade", width=150)
+        tree.column("Total", width=150)
+        tree.pack(fill="both", expand=True)
+        
+        scrollbar_y = ttk.Scrollbar(frame_tabela, orient="vertical", command=tree.yview)
+        scrollbar_y.pack(side="right", fill="y")
+        tree.configure(yscrollcommand=scrollbar_y.set)
+        
+        conn = sqlite3.connect("dizimos.db")
+        cursor = conn.cursor()
+        ano_atual = datetime.now().year
+        meses = {
+            "01": "Janeiro",
+            "02": "Fevereiro",
+            "03": "Março",
+            "04": "Abril",
+            "05": "Maio",
+            "06": "Junho",
+            "07": "Julho",
+            "08": "Agosto",
+            "09": "Setembro",
+            "10": "Outubro",
+            "11": "Novembro",
+            "12": "Dezembro",
+        }
+        comunidades = COMUNIDADES[1:]
+        
+        # Primeiro iterar pelos meses e depois pelas comunidades
+        for mes_num, mes_nome in meses.items():
+            for comunidade in comunidades:
+                cursor.execute(
+                    """
+                    SELECT COALESCE(SUM(hd.valor), 0)
+                    FROM historico_doacoes hd
+                    JOIN dizimistas d ON hd.dizimista_id = d.id
+                    WHERE substr(hd.data_doacao, 4, 2) = ?
+                    AND substr(hd.data_doacao, 7, 4) = ?
+                    AND LOWER(d.comunidade) = LOWER(?)
+                """,
+                    (mes_num, str(ano_atual), comunidade),
+                )
+                total = cursor.fetchone()[0]
+                valor_formatado = locale.currency(total, grouping=True)
+                tree.insert("", "end", values=(mes_nome, comunidade, valor_formatado))
+        conn.close()
+
 
     def formatar_data_digitacao(event, entry):
         texto = entry.get().replace("/", "")
@@ -379,7 +485,6 @@ def open_dashboard():
                 tabela.item(item, tags=("faltando",))
 
     def cancelar_atualizacao():
-        # Limpar todos os campos
         entry_nome.delete(0, tk.END)
         entry_valor.delete(0, tk.END)
         entry_valor.insert(0, "R$0,00")
@@ -389,7 +494,6 @@ def open_dashboard():
         entry_agente.delete(0, tk.END)
         entry_comunidade.delete(0, tk.END)
 
-        # Remove os botões de atualização e cancelar
         for widget in frame_form.grid_slaves():
             if isinstance(widget, tk.Button) and (
                 widget["text"] == "Confirmar Atualização"
@@ -397,7 +501,6 @@ def open_dashboard():
             ):
                 widget.destroy()
 
-        # Restaura o botão de cadastrar
         btn_cadastrar = tk.Button(
             frame_form, text="Cadastrar", command=cadastrar_dizimista, width=20, pady=8
         )
@@ -415,7 +518,6 @@ def open_dashboard():
         item = tabela.item(selected_item)
         dizimista_id = item["values"][0]
 
-        # Preenche os campos do formulário com os dados atuais
         entry_nome.delete(0, tk.END)
         entry_nome.insert(0, item["values"][1])  # Nome
 
@@ -425,7 +527,6 @@ def open_dashboard():
         entry_data_doacao.delete(0, tk.END)
         entry_data_doacao.insert(0, item["values"][3])  # Data Doação
 
-        # Buscar o aniversário do banco de dados
         conn = sqlite3.connect("dizimos.db")
         cursor = conn.cursor()
         cursor.execute(
@@ -445,7 +546,6 @@ def open_dashboard():
         entry_comunidade.delete(0, tk.END)
         entry_comunidade.insert(0, item["values"][4])  # Comunidade
 
-        # Buscar o agente do banco de dados
         cursor.execute("SELECT agente FROM dizimistas WHERE id = ?", (dizimista_id,))
         agente = cursor.fetchone()[0]
         conn.close()
@@ -453,7 +553,6 @@ def open_dashboard():
         entry_agente.delete(0, tk.END)
         entry_agente.insert(0, agente if agente else "")
 
-        # Remove o botão de cadastrar existente
         for widget in frame_form.grid_slaves():
             if isinstance(widget, tk.Button) and widget["text"] == "Cadastrar":
                 widget.destroy()
@@ -468,7 +567,6 @@ def open_dashboard():
             ):
                 widget.destroy()
 
-        # Adiciona o botão de confirmar atualização
         btn_confirmar_atualizacao = tk.Button(
             frame_form,
             text="Confirmar Atualização",
@@ -479,7 +577,6 @@ def open_dashboard():
         configurar_botao(btn_confirmar_atualizacao)
         btn_confirmar_atualizacao.grid(row=8, column=0, columnspan=2, pady=15)
 
-        # Adiciona o botão de cancelar atualização
         btn_cancelar_atualizacao = tk.Button(
             frame_form,
             text="Cancelar Atualização",
@@ -489,7 +586,7 @@ def open_dashboard():
         )
         configurar_botao(
             btn_cancelar_atualizacao, cor_bg="#dc3545"
-        )  # Vermelho para botão de cancelar
+        )  
         btn_cancelar_atualizacao.grid(row=9, column=0, columnspan=2, pady=15)
 
     def confirmar_atualizacao(dizimista_id):
@@ -501,7 +598,7 @@ def open_dashboard():
         agente = entry_agente.get().title()
         comunidade = entry_comunidade.get().title()
 
-        data_doacao = datetime.now().strftime("%d/%m/%Y")
+        data_doacao = entry_data_doacao.get()
 
         if not nome or not valor or not aniversario or not telefone or not endereco:
             messagebox.showerror("Erro", "Todos os campos devem ser preenchidos.")
@@ -512,7 +609,6 @@ def open_dashboard():
             conn = sqlite3.connect("dizimos.db")
             cursor = conn.cursor()
 
-            # Update dizimista
             cursor.execute(
                 """
                 UPDATE dizimistas 
@@ -532,7 +628,6 @@ def open_dashboard():
                 ),
             )
 
-            # Add to historical data
             cursor.execute(
                 """
                 INSERT INTO historico_doacoes (dizimista_id, valor, data_doacao, agente)
@@ -544,7 +639,6 @@ def open_dashboard():
             conn.commit()
             conn.close()
 
-            # Clear fields
             entry_nome.delete(0, tk.END)
             entry_valor.delete(0, tk.END)
             entry_valor.insert(0, "R$0,00")
@@ -554,7 +648,6 @@ def open_dashboard():
             entry_agente.delete(0, tk.END)
             entry_comunidade.delete(0, tk.END)
 
-            # Remove os botões de atualização e cancelar
             for widget in frame_form.grid_slaves():
                 if isinstance(widget, tk.Button) and (
                     widget["text"] == "Confirmar Atualização"
@@ -562,7 +655,6 @@ def open_dashboard():
                 ):
                     widget.destroy()
 
-            # Restaura o botão de cadastrar
             btn_cadastrar = tk.Button(
                 frame_form,
                 text="Cadastrar",
@@ -581,14 +673,12 @@ def open_dashboard():
     def carregar_dizimistas():
         atualizar_status_pagamentos()
 
-        # Add this function to ensure the column exists
         def adicionar_coluna_endereco():
             conn = sqlite3.connect("dizimos.db")
             cursor = conn.cursor()
 
             conn.close()
 
-        # Call the function to add the column if it doesn't exist
         adicionar_coluna_endereco()
 
         for item in tabela.get_children():
@@ -615,6 +705,7 @@ def open_dashboard():
 
         atualizar_sumarios()
         atualizar_tabela_mensal(tree_mensal)
+        atualizar_tabela_comunidades(tree_comunidades)  
 
     def cadastrar_dizimista():
         nome = entry_nome.get().title()
@@ -625,7 +716,7 @@ def open_dashboard():
         agente = entry_agente.get().title()
         comunidade = entry_comunidade.get().title()
 
-        data_doacao = datetime.now().strftime("%d/%m/%Y")
+        data_doacao = entry_data_doacao.get()
 
         if not nome or not valor or not aniversario or not telefone or not endereco:
             messagebox.showerror("Erro", "Todos os campos devem ser preenchidos.")
@@ -636,7 +727,6 @@ def open_dashboard():
             conn = sqlite3.connect("dizimos.db")
             cursor = conn.cursor()
 
-            # Inserir dizimista
             cursor.execute(
                 """
                 INSERT INTO dizimistas (nome, valor, data_doacao, aniversario, telefone, endereco, agente, comunidade)
@@ -656,7 +746,6 @@ def open_dashboard():
 
             dizimista_id = cursor.lastrowid
 
-            # Inserir no histórico
             cursor.execute(
                 """
                 INSERT INTO historico_doacoes (dizimista_id, valor, data_doacao, agente)
@@ -668,7 +757,6 @@ def open_dashboard():
             conn.commit()
             conn.close()
 
-            # Limpar campos
             entry_nome.delete(0, tk.END)
             entry_valor.delete(0, tk.END)
             entry_valor.insert(0, "R$0,00")
@@ -678,6 +766,11 @@ def open_dashboard():
             entry_endereco.delete(0, tk.END)
             entry_agente.delete(0, tk.END)
             entry_comunidade.delete(0, tk.END)
+
+            data_atual = datetime.now().strftime('%d/%m/%Y') # adiciona a data atual novamente
+            entry_data_doacao.insert(0, data_atual)
+
+
 
             carregar_dizimistas()
             messagebox.showinfo("Sucesso", "Dizimista cadastrado com sucesso!")
@@ -725,7 +818,6 @@ def open_dashboard():
     def sortear_dizimista():
         global janela_selecao, frame_botoes
 
-        # Criar janela de seleção
         janela_selecao = Toplevel()
         janela_selecao.title("Selecionar Comunidade para Sorteio")
         janela_selecao.geometry("400x500")
@@ -733,7 +825,6 @@ def open_dashboard():
         janela_selecao.resizable(False, False)
         janela_selecao.grab_set()
 
-        # Centralizar a janela
         janela_selecao.update_idletasks()
         width = janela_selecao.winfo_width()
         height = janela_selecao.winfo_height()
@@ -741,11 +832,9 @@ def open_dashboard():
         y = (janela_selecao.winfo_screenheight() // 2) - (height // 2)
         janela_selecao.geometry(f"{width}x{height}+{x}+{y}")
 
-        # Frame para os botões
         frame_botoes = tk.Frame(janela_selecao, bg=COR_FUNDO)
         frame_botoes.pack(expand=True, fill="both", padx=20, pady=20)
 
-        # Label de instrução
         label_instrucao = tk.Label(
             frame_botoes,
             text="Selecione a comunidade para o sorteio:",
@@ -757,14 +846,13 @@ def open_dashboard():
 
         comunidades = [
             "São João",
-            "Santa Terezinha",
             "São José",
             "Santos Reis",
             "Rosário",
-            "Todos",
+            "Santo Antônio",
+            "Santa Terezinha"
         ]
 
-        # Criar botões para cada comunidade
         for comunidade in comunidades:
             btn = tk.Button(
                 frame_botoes,
@@ -804,11 +892,9 @@ def open_dashboard():
 
         sorteado = random.choice(dizimistas)
 
-        # Fechar janela de seleção
         if janela_selecao:
             janela_selecao.destroy()
 
-        # Criar janela do resultado
         popup = Toplevel()
         popup.title("Resultado do Sorteio")
         popup.geometry("400x300")
@@ -816,7 +902,6 @@ def open_dashboard():
         popup.resizable(False, False)
         popup.grab_set()
 
-        # Centralizar a janela de resultado
         popup.update_idletasks()
         width = popup.winfo_width()
         height = popup.winfo_height()
@@ -824,7 +909,6 @@ def open_dashboard():
         y = (popup.winfo_screenheight() // 2) - (height // 2)
         popup.geometry(f"{width}x{height}+{x}+{y}")
 
-        # Texto do vencedor
         comunidade_texto = (
             f"\nComunidade {comunidade}" if comunidade and comunidade != "Todos" else ""
         )
@@ -877,7 +961,6 @@ def open_dashboard():
         frame_info = tk.Frame(ficha_window, bg=COR_SECUNDARIA, padx=20, pady=20)
         frame_info.pack(expand=False, fill="x", padx=20, pady=20)
 
-        # Atualizado para mostrar os campos corretos com seus respectivos índices
         informacoes = [
             ("ID:", dizimista_dados[0]),
             ("Nome:", dizimista_dados[1]),
@@ -974,7 +1057,6 @@ def open_dashboard():
     dashboard.title("Gerenciador de Dízimos")
     dashboard.configure(bg=COR_FUNDO)
 
-    # Configuração do tamanho e posição
     largura = 1600
     altura = 800
     screen_width = dashboard.winfo_screenwidth()
@@ -983,7 +1065,6 @@ def open_dashboard():
     pos_y = (screen_height // 2) - (altura // 2)
     dashboard.geometry(f"{largura}x{altura}+{pos_x}+{pos_y}")
 
-    # Frames principais com cores
     frame_left = tk.Frame(dashboard, bg=COR_FUNDO)
     frame_left.pack(side="left", padx=20, fill="y")
 
@@ -993,7 +1074,6 @@ def open_dashboard():
     frame_center = tk.Frame(dashboard, bg=COR_FUNDO)
     frame_center.pack(expand=True, fill="both", padx=20)
 
-    # Card para totais com sombra e cantos arredondados
     label_total_mes = tk.Label(
         frame_left,
         font=("Arial", 14, "bold"),
@@ -1007,20 +1087,32 @@ def open_dashboard():
     label_total_mes.pack(pady=20)
 
     label_total_ano = tk.Label(
-        frame_right,
-        font=("Arial", 14, "bold"),
-        relief="solid",
-        padx=20,
-        pady=20,
-        bg=COR_SECUNDARIA,
-        fg=COR_TEXTO,
-        width=20,
-        bd=0,
+    frame_right,
+    font=("Arial", 14, "bold"),
+    relief="solid",
+    padx=20,
+    pady=20,
+    bg=COR_SECUNDARIA,
+    fg=COR_TEXTO,
+    width=20,
+    bd=0,
     )
     label_total_ano.pack(pady=20)
 
     tree_mensal = criar_tabela_mensal(frame_right)
-    # Botão de aniversariantes estilizado
+    tree_comunidades = criar_tabela_comunidades(frame_right)
+
+    btn_total_mensal_comunidades = tk.Button(
+    frame_right,
+    text="Total Comunidade",
+    command=mostrar_total_mensal_por_comunidade,
+    width=20,
+    pady=8,
+    )
+    configurar_botao(btn_total_mensal_comunidades)
+    btn_total_mensal_comunidades.pack(pady=10)
+
+
     btn_aniversariantes = tk.Button(
         frame_right,
         text="Aniversariantes do Mês",
@@ -1031,11 +1123,9 @@ def open_dashboard():
     configurar_botao(btn_aniversariantes)
     btn_aniversariantes.pack(pady=10)
 
-    # Frame do formulário com fundo branco
     frame_form = tk.Frame(frame_left, bg=COR_SECUNDARIA, padx=15, pady=15)
     frame_form.pack(pady=10)
 
-    # Estilização dos campos do formulário
     for i, texto in enumerate(
         [
             "Nome:",
@@ -1052,7 +1142,6 @@ def open_dashboard():
         configurar_label(label)
         label.grid(row=i, column=0, padx=8, pady=8, sticky="e")
 
-    # Entradas do formulário
     entries = [
         ("entry_nome", None),
         ("entry_valor", lambda e: formatar_valor_digitacao(e, entry_valor)),
@@ -1073,18 +1162,15 @@ def open_dashboard():
 
     entry_data_doacao.delete(0, tk.END)
     entry_data_doacao.insert(0, datetime.now().strftime("%d/%m/%Y"))
-    entry_data_doacao.configure(state="readonly")
 
     entry_valor.insert(0, "R$0,00")
 
-    # Botão de cadastro estilizado
     btn_cadastrar = tk.Button(
         frame_form, text="Cadastrar", command=cadastrar_dizimista, width=20, pady=8
     )
     configurar_botao(btn_cadastrar)
     btn_cadastrar.grid(row=8, column=0, columnspan=2, pady=15)
 
-    # Frame de filtro estilizado
     frame_filtro = tk.Frame(frame_center, bg=COR_SECUNDARIA, padx=15, pady=15)
     frame_filtro.pack(pady=15, fill="x")
 
@@ -1104,10 +1190,9 @@ def open_dashboard():
     btn_limpar = tk.Button(
         frame_filtro, text="Limpar Filtro", command=carregar_dizimistas, width=12
     )
-    configurar_botao(btn_limpar, cor_bg="#6c757d")  # Cinza para botão secundário
+    configurar_botao(btn_limpar, cor_bg="#6c757d") 
     btn_limpar.pack(side="left", padx=8)
 
-    # Estilo para a tabela
     style = ttk.Style()
     style.theme_use("default")
     style.configure(
@@ -1158,29 +1243,27 @@ def open_dashboard():
     tabela.column("Endereço", width=200)
     tabela.column("Status", width=80)
 
-    # Botão de atualizar estilizado
     btn_atualizar = tk.Button(
         frame_center, text="Atualizar Dizimista", command=atualizar_dizimista, width=20
     )
-    configurar_botao(btn_atualizar, cor_bg="#28a745")  # Verde para botão de atualizar
+    configurar_botao(btn_atualizar, cor_bg="#28a745")  
     btn_atualizar.pack(pady=15)
-    # Botão de deletar estilizado
     btn_deletar = tk.Button(
         frame_center, text="Deletar Dizimista", command=deletar_dizimista, width=20
     )
-    configurar_botao(btn_deletar, cor_bg="#dc3545")  # Vermelho para botão de deletar
+    configurar_botao(btn_deletar, cor_bg="#dc3545")  
     btn_deletar.pack(pady=15)
 
     btn_sortear = tk.Button(
         frame_center, text="Sortear Dizimista", command=sortear_dizimista, width=20
     )
-    configurar_botao(btn_sortear, cor_bg="#6f42c1")  # Roxo para botão de sorteio
+    configurar_botao(btn_sortear, cor_bg="#6f42c1")  
     btn_sortear.pack(pady=15)
 
     btn_ficha = tk.Button(
         frame_center, text="Ficha Dizimista", command=mostrar_ficha_dizimista, width=20
     )
-    configurar_botao(btn_ficha, cor_bg="#17a2b8")  # Azul claro para o botão de ficha
+    configurar_botao(btn_ficha, cor_bg="#17a2b8")  
     btn_ficha.pack(pady=15)
 
     carregar_dizimistas()
